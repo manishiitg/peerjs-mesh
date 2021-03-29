@@ -1,70 +1,57 @@
-# Getting Started with Create React App
+## Peerjs Mesh ##
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A very simple implementation of webrtc p2p mesh build on top of peerjs
 
-## Available Scripts
+#### How this works? ####
 
-In the project directory, you can run:
+This mesh works based on a host. The host a special peer who's id is same as the room name.
 
-### `yarn start`
+All peers will connect to this host and data will be exchanged between this peer as host.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+Host will be started on the same instance as the first peer connects to the mesh. This means first peer and the host will started together.
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+Next, when any of peers connect to this mesh a connection will be established between the peer and host.
 
-### `yarn test`
+Host will have the id same as the mesh name, so any new peer can easily find and connect to the host. 
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+This makes peer descovery very easy.
 
-### `yarn build`
+The main issue comes when the host closes or disconnects. 
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+To solve this problem, when the host disconnects all other peers will automatically start to create a host but only will be created.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+This is because peerjs allows only unique peers for it.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Then all other peers will again establish connect to this new host.
 
-### `yarn eject`
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+##### Ideas for mesh modes #####
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Mesh Mode: Host
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+Peers don't connect to each other at all. All peers communicate with a main host and the host relays the data always.
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+Pros
 
-## Learn More
+As this doesn't require all peers to connect with each other this will network load
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Cons
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Network latency now depends on the host, as the data/stream goes though the host. If host network is slow, all peers will face high latency.
 
-### Code Splitting
+The problem will come only when host goes away and it takes time for all peers to the new host again. 
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+The host needs to manage all data in a network, this will result in high network load for host. But in a full p2p mesh this is a problem for all peers not just host
 
-### Analyzing the Bundle Size
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+Mesh Mode: Full
 
-### Making a Progressive Web App
+All peers are connected to each other.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+Pros
 
-### Advanced Configuration
+Peers connect to each other directly, so even if the host goes down the mesh is able to recover easily.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+Cons
 
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `yarn build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+High network usage as all hosts are connected to each other so cannot scale to lot of peers

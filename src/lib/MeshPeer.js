@@ -2,6 +2,9 @@ import Peer from "peerjs"
 import { v4 as uuidv4 } from 'uuid';
 const EventEmitter = require('events');
 
+/**
+ * MeshPeer classes. This handle all the logic of the peer inside a mesh
+ */
 class MeshPeer extends EventEmitter {
     options = {}
     constructor(options) {
@@ -9,22 +12,46 @@ class MeshPeer extends EventEmitter {
         this.options = options
     }
 
-    hasJoined = false
+    /**
+     * if of the current peer in the peerjs network
+     */
     id = false
+    /**
+     * room id or the id of the mesn
+     */
     roomid = false
+
+    /**
+     * peerjs peer object
+     */
     _peer = false
 
+
+    /**
+     * peerjs dataConnection map with other peers or host depending on the mesh mode
+     */
     _dataConnectionMap = {}
+    /**
+     * peerjs media connection map with other peers or host depending on the mesh mode
+     */
     _mediaConnectionMap = {}
+
 
     _connectionRetry = 0
     _nodeidx = 0
 
 
+    /**
+     * connect to the peerjs network
+     * @param {*} room  room id or mesh id
+     */
     connectNetwork = (room) => {
         this.roomid = room
         this._connectToPeerJs()
     }
+    /**
+     * connect to the peerjs network
+     */
     _connectToPeerJs = () => {
         // let peerid = this.roomid + "-" + this._nodeidx
         let peerid = uuidv4()
@@ -72,8 +99,6 @@ class MeshPeer extends EventEmitter {
         })
     }
     joined = () => {
-
-        this.hasJoined = true
         console.log("{" + this.options.log_id + "} ", "emit joined", this.id)
         this.emit("joined", this.id)
 

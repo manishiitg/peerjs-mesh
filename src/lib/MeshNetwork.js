@@ -2,86 +2,167 @@ import MeshHost from "./MeshHost";
 import MeshPeer from "./MeshPeer";
 const EventEmitter = require('events');
 
+/**
+ * Mesh Network class is responsible for managing the peers inside a mesh and also the host
+ * It will manage the different type of mesh modes i.e host/full mesh
+ * A client application will only interact with the MeshNetwork class
+ */
 class MeshNetwork extends EventEmitter {
     options = {}
     constructor(room, options) {
         super()
         this.room = room
-        if (!options.log_id) {
-            options.log_id = Math.floor(Math.random() * 100)
-        }
-        if (!options.retry) {
-            options.retry = 5
-        }
-        if (!options.retry_interval) {
-            options.retry_interval = 1 * 1000
-        }
-        if (!options.join_timeout) {
-            options.join_timeout = 10 * 1000
-        }
-        if (!options.sync_timeout) {
-            options.sync_timeout = 60 * 1000
-        }
-        if (!options.max_mesh_peers) {
-            options.max_mesh_peers = 10
-        }
-
-        if (!options.mesh_mode) {
-            options.mesh_mode = "host"
-            // in host mode, there is always on host
-            // and host is responsible for communication with all peers
-        }
         this.options = options
     }
 
+    /**
+     * instance of the current peer
+     */
     currentPeer = false
+
+    /**
+     * is joined to the peerjs network
+     */
     isjoined = false
+
+    /**
+     * sync completed
+     */
+    issync = false
+
+    /**
+     * unique id of this peer
+     */
     id = false
+
+    /**
+     * instance of the host peer
+     * will be false if host peer already exists and only data connection is opened
+     */
     hostPeer = false
+    /**
+     * data connection opened with the host peer
+     */
     hostDataConnection = false
+    /**
+     * list of peers current in this mesh
+     */
     _peerlist = []
 
+    /**
+     * Adding a peer to mesh network
+     * This creates new MeshPeer object
+     * The new MeshPeer will then connect to the peerjs networking
+     * Once the meshpeer connects to the peerjs network sucessfully
+     *  a) We set the id of the mesh network same as the peer id
+     *  b) join event is emitted
+     *  c) isjoined is set as true
+     *  d) we start to sync the mesh
+     */
     addPeer = () => {
         this.currentPeer = new MeshPeer(this.options)
         this.currentPeer.connectNetwork(this.room)
+        let joinTimeout = setTimeout(() => {
+            this.isjoined = false
+            this.emit("error", "Peer timed out before joining network")
+        }, this.options.join_timeout)
         this.currentPeer.on("joined", (id) => {
+            clearTimeout(joinTimeout)
             this.id = id
             this.emit("joined", id)
             this.isjoined = true
+            this._listenPeerEvents()
             this._syncMesh()
-
         })
         this.currentPeer.on("left", (id, err) => {
             this.isjoined = false
-        })
-        this.currentPeer.on("peerjoined", (peerid) => {
-            console.log("{" + this.options.log_id + "} ", "new peer added to mesh", peerid)
-            if (this._peerlist.indexOf(peerid) !== 0) this._peerlist.push(peerid)
-            this.emit("peerjoined", peerid)
-        })
-        this.currentPeer.on("peerdropped", (id) => {
-            this.emit("peerdropped", id)
-            if (this._peerlist.indexOf(id) >= 0) this._peerlist = this._peerlist.filter(p => p !== id)
-        })
-        this.currentPeer.on("sync", (connectedPeers) => {
-            console.log("{" + this.options.log_id + "} ", "sync completed", connectedPeers)
-            this.emit("sync", connectedPeers)
-            this._syncStarted = false
-        })
-        this.currentPeer.on("error", (err) => {
-            this.emit("error", err)
-        })
-        this.currentPeer.on("data", data => this.emit("data", data))
-        this.currentPeer.on("hostdropped", () => {
-            console.log("{" + this.options.log_id + "} ", "host has dropped this is a major issue need to create a new host")
-            this.hostPeer = false
-            this.hostDataConnection = false
-            this._syncMesh()
+            this.emit("error", "Peer unable to join peer network")
         })
     }
-    isJoined = () => {
-        return this.isjoined
+    /**
+     * handle peer joined event on the mesh network
+     * @param {*} id peer id of the joined peer
+     */
+    _listenPeerJoined = (id) => {
+        console.log("{" + this.options.log_id + "} ", "new peer added to mesh", id)
+        if (this._peerlist.indexOf(id) !== 0) this._peerlist.push(id)
+        this.emit("peerjoined", id)
     }
+    /**
+     * handle peer dropped from the mesh
+     * @param {*} id peer id 
+     */
+    _listenPeerDropped = (id) => {
+        this.emit("peerdropped", id)
+        if (this._peerlist.indexOf(id) >= 0) this._peerlist = this._peerlist.filter(p => p !== id)
+    }
+    /**
+     * handle peer sync completed 
+     * @param {*} connectedPeers list of all peers in the network
+     */
+    _listenSync = (connectedPeers) => {
+        console.log("{" + this.options.log_id + "} ", "sync completed", connectedPeers)
+        this.issync = true
+        this.emit("sync", connectedPeers)
+        this._syncStarted = false
+    }
+    /**
+     * handle error
+     * @param {*} err 
+     */
+    _listenError = (err) => {
+        this.emit("error", err)
+    }
+    /**
+     * listen to host getting dropped from the mesh and handle it 
+     */
+    _listenHostDropped = () => {
+        console.log("{" + this.options.log_id + "} ", "host has dropped this is a major issue need to create a new host")
+        this.hostPeer = false
+        this.hostDataConnection = false
+        this._syncMesh()
+    }
+    /**
+     * listen for data recieved in the mesh
+     * @param {*} data 
+     * @returns 
+     */
+    _listenData = data => this.emit("data", data)
+
+    /**
+     * listen all peer events
+     */
+    _listenPeerEvents = () => {
+        this.currentPeer.on("peerjoined", this._listenPeerJoined)
+        this.currentPeer.on("peerdropped", this._listenPeerDropped)
+        this.currentPeer.on("sync", this._listenSync)
+        this.currentPeer.on("error", this._listenError)
+        this.currentPeer.on("data", this._listenData)
+        this.currentPeer.on("hostdropped", this._listenHostDropped)
+    }
+    /**
+     * stop listing to all peer events to be used for cleanup
+     */
+    _closePeerEvents = () => {
+        this.currentPeer.off("peerjoined", this._listenPeerJoined)
+        this.currentPeer.off("peerdropped", this._listenPeerDropped)
+        this.currentPeer.off("sync", this._listenSync)
+        this.currentPeer.off("error", this._listenError)
+        this.currentPeer.off("data", this._listenData)
+        this.currentPeer.off("hostdropped", this._listenHostDropped)
+    }
+
+    /**
+     * simple function to peer has joined the network
+     * @returns 
+     */
+    isJoined = () => this.isjoined
+
+    /**
+     * wait for peer to join the network
+     * this should be not used instead use waitToSync
+     * @returns Promise which resolves when host joins the mesh or timesout
+     */
     waitToJoin = () => {
         if (this.isjoined) {
             return Promise.resolve(true)
@@ -100,20 +181,31 @@ class MeshNetwork extends EventEmitter {
         }
     }
 
+    /**
+     * return list of peers connected to this peer (should be same as all peers in the mesh)
+     */
     getPeers = () => {
-        return this.currentPeer.getPeers()
+        if (this.options.mesh_mode === "host") {
+            return this._peerlist
+        } else {
+            return this.currentPeer.getPeers()
+        }
     }
 
-    //send data using data channel
+    /**
+     * send data to all peers in the mesh
+     * @param {*} data data object to be sent
+     */
     send = (data) => {
+        if (!this.isjoined || this.sync) {
+            throw new Error("Can send data only once peer has synced with the network")
+        }
         if (this.options.mesh_mode === "host") {
-            if (this.hostDataConnection) {
-                this.hostDataConnection.send({
-                    "message": data
-                })
-            } else {
-                console.log("owner data connection is required before sending data, wait for network sync")
-            }
+
+            this.hostDataConnection.send({
+                "message": data
+            })
+
         } else {
             this.getPeers().forEach((id) => {
                 this.currentPeer.sendData(id, data)
@@ -121,6 +213,10 @@ class MeshNetwork extends EventEmitter {
         }
     }
 
+    /**
+     * create a new connection with the host of the network
+     * @param {*} cb callback which is called once connection is established
+     */
     _connectToHost = (cb) => {
         console.log("{" + this.options.log_id + "} ", "owner doesn't exist")
         let host = new MeshHost(this.options)
@@ -146,7 +242,16 @@ class MeshNetwork extends EventEmitter {
             })
         })
     }
+
+    /**
+     * if sync has already started
+     */
     _syncStarted = false
+
+    /**
+     * start sync for the mesh
+     * @returns true if sync is started, false if sync is already under way
+     */
     _syncMesh = () => {
         if (!this.currentPeer || !this.isjoined) {
             console.log("{" + this.options.log_id + "} ", "to early to call sync, first peer needs to join network")
@@ -154,6 +259,7 @@ class MeshNetwork extends EventEmitter {
         }
         if (!this._syncStarted) {
             this._syncStarted = true
+            this.issync = false
             console.log("{" + this.options.log_id + "} ", "sync mesh")
             if (!this.hostDataConnection) {
                 this._connectToHost(() => {
@@ -170,6 +276,10 @@ class MeshNetwork extends EventEmitter {
 
     }
 
+    /**
+     * waiting for sync to complete
+     * @returns return a Promise which resolves when sync is completed in the mesh or times-out
+     */
     waitToSync = () => {
         return new Promise((resolve, reject) => {
             if (!this._syncMesh()) {
@@ -188,7 +298,11 @@ class MeshNetwork extends EventEmitter {
         })
     }
 
+    /**
+     * cleanup the mesh network for the current peer
+     */
     cleanup = () => {
+        this._closePeerEvents()
         this.isjoined = false
         this.currentPeer && this.currentPeer.cleanup()
         this.hostDataConnection && this.hostDataConnection.close()
@@ -196,6 +310,10 @@ class MeshNetwork extends EventEmitter {
         this.currentPeer = false
         this.room = false
     }
+    /**
+     * @deprecated
+     * this is not to be used. this is to disconnect host from the current peer and allow the network to choose a new host
+     */
     _disconnectHost = () => {
         // this is just a method to test what happens to the network when host disconnects
         // this is to be used only for testing purposes     
