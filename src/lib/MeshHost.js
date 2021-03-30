@@ -4,8 +4,7 @@ export default class MeshHost extends EventEmitter {
     options = {}
     constructor(options) {
         super()
-        options.log_id = `host-` + options.log_id
-        this.options = { ...options, "log_id": options.log_id }
+        this.options = { ...options, "log_id": `host-` + options.log_id }
     }
     roomid = false
     _peer = false
@@ -19,9 +18,13 @@ export default class MeshHost extends EventEmitter {
         let peerid = this.roomid
         try {
 
-
+            let connection = {}
+            if (this.options.connection) {
+                connection = this.options.connection
+            }
             this._peer = new Peer(peerid, {
-                debug: 1
+                debug: 1,
+                ...connection
             })
             this._connectionRetry = this._connectionRetry + 1
             this._peer.on("open", () => {
@@ -29,6 +32,7 @@ export default class MeshHost extends EventEmitter {
                 console.log("{" + this.options.log_id + "} ", "host connnect to peer network with id: ", peerid)
                 this.id = peerid
                 this.emit("created", this._peer)
+
             })
             this._peer.on("error", (err) => {
                 if (err.type === "unavailable-id") {
@@ -71,6 +75,8 @@ export default class MeshHost extends EventEmitter {
         }
     }
 
+    _pendingMessages = {}
+
     _listenDataConnection = (dc) => {
         dc.on("data", (data) => {
             console.log("{" + this.options.log_id + "} ", "data recevied by", this.id, " from ", dc.peer, data, " when listing")
@@ -87,22 +93,55 @@ export default class MeshHost extends EventEmitter {
                     "existingPeers": data.existingPeers
                 })
             }
+            if (data.ispending) {
+                console.log("{" + this.options.log_id + "} ", " this is an old data which was not sent due to host going down")
+                let peerlist = data.peerlist
+                console.log("==================", peerlist, data)
+                peerlist.forEach((pendingpeerid) => {
+                    console.log("==================", pendingpeerid)
+                    if (!this._pendingMessages[pendingpeerid]) {
+                        this._pendingMessages[pendingpeerid] = {}
+                    }
+                    this._pendingMessages[pendingpeerid][data["unique"]] = data["data"]
+                    console.log("====================== this._pendingMessages[pendingpeerid]", this._pendingMessages[pendingpeerid])
+                })
+                console.log("=================================")
+                console.log(this._pendingMessages)
+
+
+            }
             if (data.message) {
                 Object.keys(this._dataConnectionMap).forEach(key => {
                     this._dataConnectionMap[key].send({
                         "message": data.message
                     })
                 })
+                dc.send({ "message_reciept": data.id })
             }
 
         })
         dc.on("open", () => {
+            if (this._pendingMessages) {
+                if (this._pendingMessages[dc.peer]) {
+                    console.log("=================================", this._pendingMessages[dc.peer])
+                    console.log("{" + this.options.log_id + "} ", this.id, "pending messages exists for ", dc.peer)
+                    let unique_keys = Object.keys(this._pendingMessages[dc.peer])
+                    unique_keys.forEach(key => {
+                        this._pendingMessages[dc.peer][key] && dc.send({
+                            "message": this._pendingMessages[dc.peer][key]
+                        })
+                        this._pendingMessages[dc.peer][key] = false
+                    })
+
+                }
+            }
             console.log("{" + this.options.log_id + "} ", this.id, "data connection opened with peer when listing ", dc.peer)
             Object.keys(this._dataConnectionMap).forEach(key => {
                 this._dataConnectionMap[key].send({
                     "identify": dc.peer
                 })
             })
+
             this._dataConnectionMap[dc.peer] = dc
 
 
@@ -131,6 +170,7 @@ export default class MeshHost extends EventEmitter {
 
     cleanup = () => {
         console.log("{" + this.options.log_id + "} ", "host destroy peer")
+        this._dataConnectionMap = {}
         this._peer && this._peer.destroy()
     }
 }

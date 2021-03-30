@@ -55,48 +55,65 @@ class MeshPeer extends EventEmitter {
     _connectToPeerJs = () => {
         // let peerid = this.roomid + "-" + this._nodeidx
         let peerid = uuidv4()
+        let connection = {}
+        if (this.options.connection) {
+            connection = this.options.connection
+        }
         this._peer = new Peer(peerid, {
-            debug: 1
+            debug: 1,
+            ...connection
         })
         this._connectionRetry = this._connectionRetry + 1
-        this._peer.on("open", () => {
+        try {
+            this._peer.on("open", () => {
 
-            console.log("{" + this.options.log_id + "} ", "connnect to peer network with id: ", peerid)
-            this.id = peerid
-            this.joined()
-        })
-        this._peer.on("error", (err) => {
-            if (err.type === "unavailable-id") {
+                console.log("{" + this.options.log_id + "} ", "connnect to peer network with id: ", peerid)
+                this.id = peerid
+                this.joined()
+            })
+            this._peer.on("error", (err) => {
+                if (err.type === "unavailable-id") {
 
-                if (this._nodeidx > this.options.max_mesh_peers) {
-                    this.emit("error", "mesh max node reached")
-                } else {
-                    this._nodeidx = this._nodeidx + 1
-                    this._connectToPeerJs()
-                }
-
-            } else {
-                if (err.type === "disconnected" || err.type === "network" || err.type === "server-error" || err.type === "socket-error" || err.type === "socket-closed") {
-                    console.log("{" + this.options.log_id + "} ", "peer error", peerid, err.type, err)
-                    if (this.options.retry && this._connectionRetry < this.options.retry) {
-                        console.log("{" + this.options.log_id + "} ", "retrying connection ", this._connectionRetry)
-                        setTimeout(() => {
-                            this._connectToPeerJs(peerid)
-                        }, this.options.retry_interval)
+                    if (this._nodeidx > this.options.max_mesh_peers) {
+                        this.emit("error", "mesh max node reached")
+                    } else {
+                        this._nodeidx = this._nodeidx + 1
+                        this._connectToPeerJs()
                     }
-                } else {
-                    // this.emit("error", err)
-                }
-            }
-            //need to handle this error
-            // this.emit("error", err)
 
-        })
-        this._peer.on("close", () => {
-            console.log("{" + this.options.log_id + "} ", "peer close", peerid)
-            if (this.id !== peerid)
-                this.emit("left", this.id)
-        })
+                } else {
+                    if (err.type === "disconnected" || err.type === "network" || err.type === "server-error" || err.type === "socket-error" || err.type === "socket-closed") {
+                        console.log("{" + this.options.log_id + "} ", "peer error", peerid, err.type, err)
+                        if (this.options.retry && this._connectionRetry < this.options.retry) {
+                            console.log("{" + this.options.log_id + "} ", "retrying connection ", this._connectionRetry)
+                            setTimeout(() => {
+                                this._connectToPeerJs(peerid)
+                            }, this.options.retry_interval)
+                        }
+                    } else {
+                        // this.emit("error", err)
+                    }
+                }
+                //need to handle this error
+                // this.emit("error", err)
+
+            })
+            this._peer.on("close", () => {
+                // console.log("{" + this.options.log_id + "} ", "peer close", peerid)
+                // if (this.id !== peerid)
+                if (this.options.retry && this._connectionRetry < this.options.retry) {
+                    console.log("{" + this.options.log_id + "} ", "retrying connection ", this._connectionRetry)
+                    setTimeout(() => {
+                        this._connectToPeerJs(peerid)
+                    }, this.options.retry_interval)
+                } else {
+                    this.emit("error", "peer connection closed")
+                }
+            })
+        } catch (error) {
+            console.warn(error, " when joining peer network")
+            this.emit("error", error)
+        }
     }
     joined = () => {
         console.log("{" + this.options.log_id + "} ", "emit joined", this.id)
@@ -148,8 +165,6 @@ class MeshPeer extends EventEmitter {
         let dc = this._peer.connect(other_peer_id)
         if (serve)
             this._serveDataConnection(dc)
-
-        console.log("{" + this.options.log_id + "} ", "XXXXXXXXXXXXXXXXXXXXXX", dc)
         return dc
     }
 
@@ -282,6 +297,9 @@ class MeshPeer extends EventEmitter {
     cleanup = () => {
         console.log("{" + this.options.log_id + "} ", "destroy peer")
         console.log(this._peer)
+        Object.keys(this._dataConnectionMap).forEach(key => {
+            this._dataConnectionMap[key].close()
+        })
         this._peer && this._peer.destroy()
         this.roomid = false
     }

@@ -27,7 +27,7 @@ export const mesh = (room, options = {}) => {
         options.retry_interval = 1 * 1000
     }
     if (!options.join_timeout) {
-        options.join_timeout = 10 * 1000
+        options.join_timeout = -1
     }
     if (!options.sync_timeout) {
         options.sync_timeout = 60 * 1000
