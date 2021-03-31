@@ -1,0 +1,10 @@
+{
+    "name": "@eatzy/common-reactjs",
+    "version": "0.0.0",
+    "description": "Common ReactJS components",
+    "main": "main.js",
+    "publishConfig": {
+        "registry": "https://npm.pkg.github.com/"
+    },
+    "repository": "https://github.com/manishiitg/peerjs-mesh"
+}

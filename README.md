@@ -2,6 +2,8 @@
 
 A very simple implementation of webrtc p2p mesh build on top of peerjs
 
+This is quite experimental at this stage and only in early development mode.
+
 #### How this works? ####
 
 This mesh works based on a host. The host a special peer who's id is same as the room name.

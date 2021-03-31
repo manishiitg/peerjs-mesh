@@ -1,49 +1,55 @@
 {
-  "name": "peerjs-mesh",
-  "version": "0.1.0",
-  "private": true,
-  "dependencies": {
-    "@testing-library/jest-dom": "^5.11.4",
-    "@testing-library/react": "^11.1.0",
-    "@testing-library/user-event": "^12.1.10",
-    "classnames": "^2.2.6",
-    "peerjs": "^1.3.2",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
-    "react-scripts": "4.0.3",
-    "web-vitals": "^1.0.1"
-  },
+  "name": "@manish/peerjs-mesh",
+  "version": "0.0.0",
+  "description": "Simple P2P Mesh using peerjs",
+  "main": "lib/mesh.js",
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "jest"
+    "build": "babel lib -d dist --delete-dir-on-start --copy-files --no-copy-ignored --ignore **/*.test.js",
+    "test": "jest --ci --runInBand --coverage --reporters=default --reporters=jest-junit --env=jest-environment-jsdom-sixteen",
+    "lint": "npm-run-all --parallel lint:*",
+    "lint:js": "eslint lib",
+    "pretest": "npm-run-all --parallel pretest:*",
+    "pretest:lint": "npm run lint",
+    "documentation": "documentation build lib/** --config documentation.yml --infer-private --access public -f html -o doc",
+    "pretest:inspect": "jscpd -c .jscpd.json -i \"**/*.test.js,**/*.styles.js,**/*.css\" lib"
   },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
   },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+  "repository": "https://github.com/manishiitg/peerjs-mesh",
+  "dependencies": {
+    "peerjs": "^1.3.2"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.12.1",
+    "@babel/core": "^7.12.7",
+    "@babel/eslint-parser": "^7.13.14",
+    "@babel/plugin-proposal-class-properties": "^7.13.0",
+    "@babel/preset-env": "^7.12.1",
+    "babel-eslint": "^10.1.0",
+    "babel-jest": "^26.6.3",
+    "documentation": "^13.1.0",
+    "eslint": "^6.6.0",
+    "eslint-config-prettier": "^6.11.0",
+    "eslint-plugin-jsdoc": "^30.7.8",
+    "eslint-plugin-prettier": "^3.1.3",
+    "jest": "^26.6.3",
+    "jest-environment-jsdom-sixteen": "^1.0.3",
+    "jest-junit": "^12.0.0",
+    "jscpd": "^3.3.19",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^2.0.5"
   },
   "jest": {
-    "roots": [
-      "<rootDir>/src/tests"
+    "modulePathIgnorePatterns": [
+      "<rootDir>/example",
+      "<rootDir>/dist"
     ],
-    "testTimeout": 10000,
-    "verbose": true,
+    "moduleFileExtensions": [
+      "js"
+    ],
     "collectCoverageFrom": [
-      "lib/**/*.{js,jsx}",
+      "src/**/*.{js,jsx}",
       "!**/node_modules/**",
       "!**/coverage/**",
       "!**/dist/**"
@@ -54,10 +60,5 @@
         "functions": 90
       }
     }
-  },
-  "devDependencies": {
-    "lodash": "^4.17.21",
-    "mock-socket": "^9.0.3",
-    "uuid": "^8.3.2"
   }
 }
