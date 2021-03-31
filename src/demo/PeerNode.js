@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import classnames from "classnames"
 import { mesh } from "../lib/mesh"
+import VideoStream from "./VideoStream"
 
 const PeerNode = ({ roomId, idx, removePeer, onData, onSync, onIsHost, meshData, sendDataToMeshAndVerify }) => {
 
@@ -18,17 +19,19 @@ const PeerNode = ({ roomId, idx, removePeer, onData, onSync, onIsHost, meshData,
 
     const [error, setError] = useState(false)
 
+    const [streams, setStreams] = useState({})
+
     useEffect(() => {
         console.log("================= peer joining network =============")
 
         peer.current = mesh(roomId,
             {
                 "log_id": "peer" + idx,
-                "connection": {
-                    "host": "peerjs.platoo-platform.com",
-                    "secure": true,
-                    "path": "myapp"
-                }
+                // "connection": {
+                //     "host": "peerjs.platoo-platform.com",
+                //     "secure": true,
+                //     "path": "myapp"
+                // }
             }
         )
         peer.current.on("joined", (id) => {
@@ -40,6 +43,23 @@ const PeerNode = ({ roomId, idx, removePeer, onData, onSync, onIsHost, meshData,
             setSync(issync)
             setError("")
             if (issync) onSync(idx)
+
+            if (issync) {
+                var getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+                getUserMedia({ video: true, audio: true }, function (stream) {
+                    console.log("stream", stream)
+                    setStreams(streams => {
+                        streams["mine"] = stream
+                        return Object.assign({}, streams)
+                    })
+                })
+            }
+        })
+        peer.current.on("stream", (stream, id) => {
+            setStreams(streams => {
+                streams[id] = stream
+                return Object.assign({}, streams)
+            })
         })
         peer.current.on("peerjoined", (id, peerlist) => {
             setPeers(Object.assign([], peerlist))
@@ -48,6 +68,7 @@ const PeerNode = ({ roomId, idx, removePeer, onData, onSync, onIsHost, meshData,
             setPeers(Object.assign([], peerlist))
         })
         peer.current.on("hostconnected", (ishost) => {
+            console.log("hostconnectedhostconnectedhostconnectedhostconnectedhostconnectedhostconnectedhostconnected", ishost)
             setIsHostPeer(ishost)
             if (ishost) onIsHost(idx)
         })
@@ -56,10 +77,11 @@ const PeerNode = ({ roomId, idx, removePeer, onData, onSync, onIsHost, meshData,
             onData(idx, data)
         })
         peer.current.on("error", (msg) => {
-            setError(msg)
+            setError(msg + "")
         })
 
         return () => {
+            setStreams([])
             peer.current.cleanup()
         }
     }, [])
@@ -67,6 +89,7 @@ const PeerNode = ({ roomId, idx, removePeer, onData, onSync, onIsHost, meshData,
     useEffect(() => {
         console.log("meshData", meshData)
         if (meshData["idx"] == idx || meshData["idx"] === - 1) {
+            onData(idx, meshData["data"])
             peer.current.send(meshData["data"])
         }
     }, [meshData])
@@ -80,6 +103,17 @@ const PeerNode = ({ roomId, idx, removePeer, onData, onSync, onIsHost, meshData,
                         {JSON.stringify(data, undefined, 2)}
                     </pre>
                 </div>}
+                <div className="d-flex flex-row flex-wrap">
+                    {streams && Object.keys(streams).map((xid) => {
+                        return (
+                            <div className="d-flex" key={xid}>
+                                <VideoStream stream={streams[id]} myid={id} id={xid} />
+                            </div>
+                        )
+                    })}
+                </div>
+
+
                 <ul className="list-group list-group-flush">
                     {joined && <li className="list-group-item">Joined Meshed</li>}
                     {!sync && <div> Mesh Sync<div className="spinner-border text-center" role="status">

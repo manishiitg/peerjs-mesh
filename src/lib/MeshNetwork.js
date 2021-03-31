@@ -46,6 +46,10 @@ class MeshNetwork extends EventEmitter {
      */
     hostDataConnection = false
     /**
+     * host media connection
+     */
+    hostMediaConnection = false
+    /**
      * list of peers current in this mesh
      */
     _peerlist = []
@@ -136,6 +140,12 @@ class MeshNetwork extends EventEmitter {
      * @param {*} err 
      */
     _listenError = (err) => {
+        if (err.type && err.type === "peer-unavailable") {
+            if (err.toString().indexOf(this.room)) {
+                //if error is related to host not avaiable there is no need to emit it
+                return
+            }
+        }
         this.emit("error", err)
     }
     /**
@@ -143,8 +153,8 @@ class MeshNetwork extends EventEmitter {
      */
     _listenHostDropped = () => {
         console.log("{" + this.options.log_id + "} ", "host has dropped this is a major issue need to create a new host")
-        this.hostPeer = false
-        this.hostDataConnection = false
+        this.hostPeer = null
+        this.hostDataConnection = null
         this.emit("sync", false)
         this._syncMesh()
     }
@@ -155,6 +165,7 @@ class MeshNetwork extends EventEmitter {
      */
     _listenData = data => this.emit("data", data)
 
+    _listenStream = (stream, id) => this.emit("stream", stream, id)
     /**
      * listen all peer events
      */
@@ -165,6 +176,36 @@ class MeshNetwork extends EventEmitter {
         this.currentPeer.on("error", this._listenError)
         this.currentPeer.on("data", this._listenData)
         this.currentPeer.on("hostdropped", this._listenHostDropped)
+        this.currentPeer.on("stream", this._listenStream)
+
+        this.currentPeer.on("error-peer-unavailable", (err) => {
+            let host = new MeshHost(this.options)
+            host.connectNetwork(this.room)
+            host.on("created", (peer) => {
+                console.log("{" + this.options.log_id + "} ", " host created ", peer)
+                this.hostPeer = host
+                let dc = this.currentPeer.connectWithPeer(this.room)
+                dc.on("open", () => {
+                    console.log("{" + this.options.log_id + "} ", "data connection opened with host")
+                    this.hostDataConnection = dc
+                    this.emit("hostconnected", true)
+                    console.log("{" + this.options.log_id + "} ", "check pending messages from here 368")
+                    this._checkPendingMessages()
+                })
+            })
+            host.on("exists", () => {
+                console.log("{" + this.options.log_id + "} ", " host exists ")
+                let dc = this.currentPeer.connectWithPeer(this.room)
+                dc.on("open", () => {
+                    console.log("{" + this.options.log_id + "} ", "data connection opened with host")
+                    this.hostDataConnection = dc
+                    this.emit("hostconnected", false)
+                    console.log("{" + this.options.log_id + "} ", "check pending messages from here 379")
+                    this._checkPendingMessages()
+                })
+            })
+
+        })
     }
     /**
      * stop listing to all peer events to be used for cleanup
@@ -177,6 +218,7 @@ class MeshNetwork extends EventEmitter {
         this.currentPeer.off("error", this._listenError)
         this.currentPeer.off("data", this._listenData)
         this.currentPeer.off("hostdropped", this._listenHostDropped)
+        this.currentPeer.off("stream", this._listenStream)
     }
 
     /**
@@ -240,6 +282,9 @@ class MeshNetwork extends EventEmitter {
                 this._messageToSend = []
             }
         }
+        if (this.currentPeer._getCurrentStream()) {
+            this.call(this.currentPeer._getCurrentStream())
+        }
     }
 
     /**
@@ -248,17 +293,23 @@ class MeshNetwork extends EventEmitter {
      */
     send = (data) => {
         if (!this.isjoined || this.sync) {
-            throw new Error("Can send data only once peer has synced with the network")
-        }
-        if (this.options.mesh_mode === "host") {
-
-            console.log("{" + this.options.log_id + "} ", 'this.hostDataConnection', this.hostDataConnection)
-            if (!this.hostDataConnection || !this.hostDataConnection.open) {
-                console.log("{" + this.options.log_id + "} ", "adding data to local cache to send once host connection is established")
+            if (this._peerlist.length > 0)
                 this._messageToSend.push({
                     "data": data,
                     "peerlist": this._peerlist
                 })
+            console.log("{" + this.options.log_id + "} ", "Can send data only once peer has synced with the network")
+            return
+        }
+        if (this.options.mesh_mode === "host") {
+            console.log("{" + this.options.log_id + "} ", 'this.hostDataConnection', this.hostDataConnection)
+            if (!this.hostDataConnection || !this.hostDataConnection.open) {
+                console.log("{" + this.options.log_id + "} ", "adding data to local cache to send once host connection is established", data, this._messageToSend)
+                if (this._peerlist.length > 0)
+                    this._messageToSend.push({
+                        "data": data,
+                        "peerlist": this._peerlist
+                    })
             } else {
                 let msg_id = uuidv4()
                 this.hostDataConnection.send({
@@ -292,39 +343,50 @@ class MeshNetwork extends EventEmitter {
         }
     }
 
+
+    call = (stream) => {
+        if (this.hostMediaConnection) {
+            this.hostMediaConnection.send({
+                "call": true
+            })
+        }
+        this.currentPeer._setCurrentStream(stream)
+        // if (this._peerlist.length > 0) {
+        //     this._peerlist.forEach(key => {
+        //         if (key !== this.id)
+        //             this.currentPeer.connectStreamWithPeer(key, stream)
+        //     })
+        // }
+        // not directly establishing connnection first will inform owner and then create a connection
+    }
+
     /**
      * create a new connection with the host of the network
      * also check if host has existing peers already connected to it
      * @param {*} cb callback which is called once connection is established
      */
+    _hostConnectionEventSetup = false
+    _hostDataConnection = false
     _connectToHost = (cb) => {
         console.log("{" + this.options.log_id + "} ", "owner doesn't exist either create or connect to owner")
-        let host = new MeshHost(this.options)
-        host.connectNetwork(this.room)
-        let dc = false
-        host.on("created", (peer) => {
-            console.log("{" + this.options.log_id + "} ", " host created ", peer)
-            this.hostPeer = host
-            dc = this.currentPeer.connectWithPeer(this.room)
-            dc.on("open", () => {
-                console.log("{" + this.options.log_id + "} ", "data connection opened with owner")
-                this.hostDataConnection = dc
-                this.emit("hostconnected", true)
-                this._checkPendingMessages()
-                cb()
-            })
+
+        //doing this should ideally reduce time for mesh sync because owner will existing always except for the first host
+        let dc = this.currentPeer.connectWithPeer(this.room)
+
+        // if we don't add this this event get called multiple times when host disconnects. everytime a host disconects this gets call again
+        // so if host disconnects 3 times, the below events get called 3 times
+        dc.on("open", () => {
+            console.log("{" + this.options.log_id + "} ", "data connection open with host")
+            this.hostDataConnection = dc
+            this.emit("hostconnected", false)
+            console.log("{" + this.options.log_id + "} ", "check pending messages from here 356")
+            this._checkPendingMessages()
         })
-        host.on("exists", () => {
-            console.log("{" + this.options.log_id + "} ", " host exists ")
-            dc = this.currentPeer.connectWithPeer(this.room)
-            dc.on("open", () => {
-                console.log("{" + this.options.log_id + "} ", "data connection opened with owner")
-                this.hostDataConnection = dc
-                this.emit("hostconnected", false)
-                this._checkPendingMessages()
-                cb()
-            })
-        })
+
+        //peer unavaiable handle above now 
+
+
+
     }
 
     /**
@@ -346,7 +408,8 @@ class MeshNetwork extends EventEmitter {
             this.issync = false
             console.log("{" + this.options.log_id + "} ", "sync mesh")
             if (!this.hostDataConnection) {
-                this._connectToHost(() => {
+                this._connectToHost()
+                this.once("hostconnected", () => {
                     this.hostDataConnection.send({ "peerlist": true, "existingPeers": this._peerlist })
                 })
             } else {

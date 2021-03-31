@@ -35,6 +35,9 @@ export const mesh = (room, options = {}) => {
     if (!options.max_mesh_peers) {
         options.max_mesh_peers = 10
     }
+    if (!options.auto_call_peer) {
+        options.auto_call_peer = 5
+    }
 
     if (!options.mesh_mode) {
         options.mesh_mode = "host"

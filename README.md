@@ -30,6 +30,7 @@ Then all other peers will again establish connect to this new host.
 Mesh Mode: Host
 
 Peers don't connect to each other at all. All peers communicate with a main host and the host relays the data always.
+But this will only work on data connection not stream, so its of no use.
 
 Pros
 
@@ -47,6 +48,12 @@ The host needs to manage all data in a network, this will result in high network
 Mesh Mode: Full
 
 All peers are connected to each other.
+
+In this also there is a problem that mesh sync takes time because every notes needs to connect to all other.
+So if there are 10 nodes, this means 10x10 connections. This takes lot of time as the size of network grows.
+So for data connection host mode is good and nodes get connected fast as well.
+
+Plus browser has a webrtc connection limit also
 
 Pros
 

@@ -9,66 +9,72 @@ export default class MeshHost extends EventEmitter {
     roomid = false
     _peer = false
     _dataConnectionMap = {}
+    _mediaConnectionMap = {} //not used
+    _callMap = {} //list of peer who have started their stream
 
     connectNetwork = (room) => {
         this.roomid = room
         this._connectToPeerJs()
     }
+    _listenOpen = () => {
+        console.log("{" + this.options.log_id + "} ", "host connnect to peer network with id: ", this.peerid)
+        this.id = this.peerid
+        this.emit("created", this._peer)
+
+    }
+
+    _listenError = (err) => {
+        console.log("{" + this.options.log_id + "} ", "error", err)
+        if (err.type === "unavailable-id") {
+            this.emit("exists")
+        } else {
+            if (err.type === "disconnected" || err.type === "network" || err.type === "server-error" || err.type === "socket-error" || err.type === "socket-closed") {
+                console.log("{" + this.options.log_id + "} ", "peer error", this.peerid, err.type, err)
+                if (this.options.retry && this._connectionRetry < this.options.retry) {
+                    console.log("{" + this.options.log_id + "} ", "retrying connection ", this._connectionRetry)
+                    setTimeout(() => {
+                        this._connectToPeerJs(this.peerid)
+                    }, this.options.retry_interval)
+                } else {
+                    // Object.keys(this._dataConnectionMap).forEach(key => {
+                    //     this._dataConnectionMap[key].send({
+                    //         "hostconnection-error": true
+                    //     })
+                    // })
+                    this.emit("error", err)
+                }
+            } else {
+                this.emit("exists")
+            }
+        }
+    }
+    _listenClose = () => {
+        Object.keys(this._dataConnectionMap).forEach(key => {
+            this._dataConnectionMap[key].send({
+                "hostdropped": true
+            })
+        })
+    }
+    _listenDataConnection = (dc) => {
+        this._listenDataConnection(dc)
+    }
     _connectToPeerJs = () => {
-        let peerid = this.roomid
+        this.peerid = this.roomid
         try {
 
             let connection = {}
             if (this.options.connection) {
                 connection = this.options.connection
             }
-            this._peer = new Peer(peerid, {
+            this._peer = new Peer(this.peerid, {
                 debug: 1,
                 ...connection
             })
             this._connectionRetry = this._connectionRetry + 1
-            this._peer.on("open", () => {
-
-                console.log("{" + this.options.log_id + "} ", "host connnect to peer network with id: ", peerid)
-                this.id = peerid
-                this.emit("created", this._peer)
-
-            })
-            this._peer.on("error", (err) => {
-                if (err.type === "unavailable-id") {
-                    this.emit("exists")
-                } else {
-                    if (err.type === "disconnected" || err.type === "network" || err.type === "server-error" || err.type === "socket-error" || err.type === "socket-closed") {
-                        console.log("{" + this.options.log_id + "} ", "peer error", peerid, err.type, err)
-                        if (this.options.retry && this._connectionRetry < this.options.retry) {
-                            console.log("{" + this.options.log_id + "} ", "retrying connection ", this._connectionRetry)
-                            setTimeout(() => {
-                                this._connectToPeerJs(peerid)
-                            }, this.options.retry_interval)
-                        } else {
-                            Object.keys(this._dataConnectionMap).forEach(key => {
-                                this._dataConnectionMap[key].send({
-                                    "hostconnection-error": true
-                                })
-                            })
-                        }
-                    } else {
-                        this.emit("exists")
-                    }
-                }
-
-            })
-            this._peer.on("close", () => {
-                Object.keys(this._dataConnectionMap).forEach(key => {
-                    this._dataConnectionMap[key].send({
-                        "hostdropped": true
-                    })
-                })
-            })
-
-            this._peer.on("connection", (dc) => {
-                this._listenDataConnection(dc)
-            })
+            this._peer.on("open", this._listenOpen)
+            this._peer.on("error", this._listenError)
+            this._peer.on("close", this._listenClose)
+            this._peer.on("connection", this._listenDataConnection)
 
         } catch (error) {
             console.warn(error)
@@ -90,7 +96,8 @@ export default class MeshHost extends EventEmitter {
                 dc.send({
                     "peerlist": true,
                     "peers": Object.keys(this._dataConnectionMap),
-                    "existingPeers": data.existingPeers
+                    "existingPeers": data.existingPeers,
+                    "callMap": this._callMap
                 })
             }
             if (data.ispending) {
@@ -107,16 +114,19 @@ export default class MeshHost extends EventEmitter {
                 })
                 console.log("=================================")
                 console.log(this._pendingMessages)
-
-
             }
             if (data.message) {
                 Object.keys(this._dataConnectionMap).forEach(key => {
-                    this._dataConnectionMap[key].send({
-                        "message": data.message
-                    })
+                    if (key !== dc.peer) //dont send data to the same host
+                        this._dataConnectionMap[key].send({
+                            "message": data.message
+                        })
                 })
                 dc.send({ "message_reciept": data.id })
+            }
+            if (data.call) {
+                dc.send({ "callMap": this._callMap })
+                this._callMap[dc.peer] = true
             }
 
         })
@@ -149,6 +159,7 @@ export default class MeshHost extends EventEmitter {
         dc.on("close", () => {
             console.log("{" + this.options.log_id + "} ", this.id, "data connection closed with peer when listing ", dc.peer)
             delete this._dataConnectionMap[dc.peer]
+            delete this._callMap[dc.peer]
             Object.keys(this._dataConnectionMap).forEach(key => {
                 this._dataConnectionMap[key].send({
                     "dropped": dc.peer
@@ -159,6 +170,7 @@ export default class MeshHost extends EventEmitter {
         dc.on("error", (err) => {
             console.log("{" + this.options.log_id + "} ", this.id, "data connection err with peer when listing ", err, dc.peer)
             delete this._dataConnectionMap[dc.peer]
+            delete this._callMap[dc.peer]
             Object.keys(this._dataConnectionMap).forEach(key => {
                 this._dataConnectionMap[key].send({
                     "dropped": dc.peer
@@ -170,7 +182,16 @@ export default class MeshHost extends EventEmitter {
 
     cleanup = () => {
         console.log("{" + this.options.log_id + "} ", "host destroy peer")
+        Object.keys(this._dataConnectionMap).forEach(key => {
+            this._dataConnectionMap[key].close()
+        })
+
+        this._peer.off("open", this._listenOpen)
+        this._peer.off("error", this._listenError)
+        this._peer.off("close", this._listenClose)
+        this._peer.off("connection", this._listenDataConnection)
         this._dataConnectionMap = {}
-        this._peer && this._peer.destroy()
+        this._callMap = {}
+        this._peer.destroy()
     }
 }
