@@ -14,6 +14,9 @@ class MeshNetwork extends EventEmitter {
         super()
         this.room = room
         this.options = options
+        if (this.options.initData) {
+            this.initData(this.options.initData)
+        }
     }
 
     /**
@@ -164,6 +167,8 @@ class MeshNetwork extends EventEmitter {
     _listenStream = (stream, id) => this.emit("stream", stream, id)
 
     _listenStreamDrop = (id) => this.emit("streamdrop", id)
+
+    _listenInitData = (id, data) => this.emit("initData", id, data)
     /**
      * listen all peer events
      */
@@ -176,6 +181,7 @@ class MeshNetwork extends EventEmitter {
         this.currentPeer.on("hostdropped", this._listenHostDropped)
         this.currentPeer.on("stream", this._listenStream)
         this.currentPeer.on("streamdrop", this._listenStreamDrop)
+        this.currentPeer.on("initData", this._listenInitData)
 
         this.currentPeer.on("error-peer-unavailable", (err) => {
             let host = new MeshHost(this.options)
@@ -219,6 +225,7 @@ class MeshNetwork extends EventEmitter {
         this.currentPeer.off("hostdropped", this._listenHostDropped)
         this.currentPeer.off("stream", this._listenStream)
         this.currentPeer.off("streamdrop", this._listenStreamDrop)
+        this.currentPeer.off("initData", this._listenInitData)
     }
 
     /**
@@ -284,6 +291,9 @@ class MeshNetwork extends EventEmitter {
         }
         if (this.currentPeer._getCurrentStream()) {
             this.call(this.currentPeer._getCurrentStream())
+        }
+        if (this._dataToPersist) {
+            this.initData(this._dataToPersist)
         }
     }
 
@@ -358,6 +368,21 @@ class MeshNetwork extends EventEmitter {
         if (this.hostDataConnection) {
             this.hostDataConnection.send({
                 "call": false
+            })
+        }
+    }
+
+    /**
+     * this is a object which you can set to the peer
+     * this data will be recieved by every peer which joines the mesh with the peer id
+     * this can be used to set things will peer name or unique data relating to a peer
+     */
+    _dataToPersist = false
+    initData = (data) => {
+        this._dataToPersist = data
+        if (this.hostDataConnection) {
+            this.hostDataConnection.send({
+                "initData": data
             })
         }
     }
@@ -455,7 +480,9 @@ class MeshNetwork extends EventEmitter {
      */
     cleanup = () => {
         this._closePeerEvents()
+        this.disconnectCall()
         this.isjoined = false
+        this._dataToPersist = false
         this.currentPeer && this.currentPeer.cleanup()
         this.hostDataConnection && this.hostDataConnection.close()
         this.hostPeer && this.hostPeer.cleanup()

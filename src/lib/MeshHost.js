@@ -82,6 +82,7 @@ export default class MeshHost extends EventEmitter {
     }
 
     _pendingMessages = {}
+    _initData = {}
 
     _listenDataConnection = (dc) => {
         dc.on("data", (data) => {
@@ -124,6 +125,15 @@ export default class MeshHost extends EventEmitter {
                 })
                 dc.send({ "message_reciept": data.id })
             }
+            if (data.initData && Object.keys(data.initData).length > 0) {
+                this._initData[dc.peer] = data.initData
+                Object.keys(this._dataConnectionMap).forEach(key => {
+                    if (key !== dc.peer) //dont send data to the same host
+                        this._dataConnectionMap[key].send({
+                            "initData": this._initData
+                        })
+                })
+            }
             if ("call" in data) {
                 if (!data.call) {
                     Object.keys(this._dataConnectionMap).forEach(key => {
@@ -143,7 +153,6 @@ export default class MeshHost extends EventEmitter {
         dc.on("open", () => {
             if (this._pendingMessages) {
                 if (this._pendingMessages[dc.peer]) {
-                    console.log("=================================", this._pendingMessages[dc.peer])
                     console.log("{" + this.options.log_id + "} ", this.id, "pending messages exists for ", dc.peer)
                     let unique_keys = Object.keys(this._pendingMessages[dc.peer])
                     unique_keys.forEach(key => {
@@ -154,6 +163,9 @@ export default class MeshHost extends EventEmitter {
                     })
 
                 }
+            }
+            if (this._initData) {
+                dc.send({ "initData": this._initData })
             }
             console.log("{" + this.options.log_id + "} ", this.id, "data connection opened with peer when listing ", dc.peer)
             Object.keys(this._dataConnectionMap).forEach(key => {

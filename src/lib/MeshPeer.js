@@ -263,6 +263,9 @@ class MeshPeer extends EventEmitter {
             if (data.message) {
                 this.emit("data", data.message)
             }
+            if (data.initData) {
+                this._handleInitData(data.initData)
+            }
             if (data.identify) {
                 this.emit("peerjoined", data.identify)
 
@@ -321,6 +324,12 @@ class MeshPeer extends EventEmitter {
         })
     }
 
+    _handleInitData = (initData) => {
+        Object.keys(initData).forEach(key => {
+            this.emit("initData", key, initData[key])
+        })
+    }
+
     _handleCallStopped = (callstopped) => {
         console.log("{" + this.options.log_id + "} ", "call stopped", callstopped, this._mediaConnectionMap[callstopped])
         if (this._mediaConnectionMap[callstopped]) {
@@ -336,6 +345,26 @@ class MeshPeer extends EventEmitter {
         console.log("{" + this.options.log_id + "} ", "call map length", Object.keys(callMap).length, this._getCurrentStream())
 
         if (this._getCurrentStream()) {
+            //if a host gets dropped who is having a call, need to handle it differently
+            console.log("{" + this.options.log_id + "} ", "existing mediac connection", Object.keys(this._mediaConnectionMap))
+
+            if (this._mediaConnectionMap) {
+
+                if (Object.keys(this._mediaConnectionMap).length === 0) {
+                    Object.keys(this._mediaConnectionMap).forEach(key => {
+                        console.log("{" + this.options.log_id + "} ", "seems host got stopped and few calls got dropped", key)
+                        this._handleCallStopped(key)
+                    })
+                } else {
+                    Object.keys(this._mediaConnectionMap).forEach(key => {
+                        if (!callMap[key]) {
+                            console.log("{" + this.options.log_id + "} ", "seems host got stopped and few calls got dropped", key)
+                            this._handleCallStopped(key)
+                        }
+                    })
+                }
+            }
+
             Object.keys(callMap).forEach((key, idx) => {
                 if (idx < this.options.auto_call_peer) {
                     if (!this._mediaConnectionMap[key]) {
@@ -394,7 +423,7 @@ class MeshPeer extends EventEmitter {
     }
 
     _listenMediaConnection = (mc) => {
-        console.log("{" + this.options.log_id + "} ", "stream call by", this.id, " from ", mc.peer, " when listening")
+        console.log("{" + this.options.log_id + "} ", "stream call on", this.id, " from ", mc.peer, " when listening")
         if (this._getCurrentStream()) {
             mc.answer(this._getCurrentStream())
         } else {

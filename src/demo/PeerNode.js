@@ -52,6 +52,9 @@ const PeerNode = ({ roomId, idx, removePeer, onData, onSync, onIsHost, meshData,
         peer.current = mesh(roomId,
             {
                 "log_id": "peer" + idx,
+                "initData": {
+                    "name": idx
+                }
                 // "connection": {
                 //     "host": "peerjs.platoo-platform.com",
                 //     "secure": true,
@@ -61,6 +64,10 @@ const PeerNode = ({ roomId, idx, removePeer, onData, onSync, onIsHost, meshData,
         )
 
         startCall()
+
+        peer.current.on("initData", (id, data) => {
+            console.log("initDatainitDatainitDatainitData", id, data)
+        })
         peer.current.on("joined", (id) => {
             setId(id)
             setJoined(true)
@@ -70,10 +77,8 @@ const PeerNode = ({ roomId, idx, removePeer, onData, onSync, onIsHost, meshData,
             setSync(issync)
             setError("")
             if (issync) onSync(idx)
-
-
-
         })
+
         peer.current.on("stream", (stream, id) => {
             setStreams(streams => {
                 streams[id] = stream
