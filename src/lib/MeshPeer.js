@@ -194,6 +194,9 @@ class MeshPeer extends EventEmitter {
         dc.on("data", (data) => {
             console.log("{" + this.options.log_id + "} ", "data recevied by", this.id, " from ", dc.peer, data, " when serving")
 
+            if (data.callstopped) {
+                this._handleCallStopped(data.callstopped)
+            }
             if (data.callMap) {
                 this._handleCallMap(data.callMap)
             }
@@ -288,6 +291,9 @@ class MeshPeer extends EventEmitter {
         dc.on("close", () => {
             console.log("{" + this.options.log_id + "} ", this.id, "data connection closed with peer when serving", dc.peer)
             delete this._dataConnectionMap[dc.peer]
+            if (this._mediaConnectionMap[dc.peer]) {
+                delete this._mediaConnectionMap[dc.peer]
+            }
             if (dc.peer === this.id) {
             } else {
                 if (dc.peer === this.roomid) {
@@ -301,6 +307,9 @@ class MeshPeer extends EventEmitter {
         dc.on("error", (err) => {
             console.log("{" + this.options.log_id + "} ", this.id, "data connection err with peer", err, dc.peer)
             delete this._dataConnectionMap[dc.peer]
+            if (this._mediaConnectionMap[dc.peer]) {
+                delete this._mediaConnectionMap[dc.peer]
+            }
             if (dc.peer === this.id) {
             } else {
                 if (dc.peer === this.roomid) {
@@ -312,13 +321,27 @@ class MeshPeer extends EventEmitter {
         })
     }
 
+    _handleCallStopped = (callstopped) => {
+        console.log("{" + this.options.log_id + "} ", "call stopped", callstopped, this._mediaConnectionMap[callstopped])
+        if (this._mediaConnectionMap[callstopped]) {
+
+            if (this._mediaConnectionMap[callstopped].close)
+                this._mediaConnectionMap[callstopped].close()
+
+            delete this._mediaConnectionMap[callstopped]
+        }
+        this.emit("streamdrop", callstopped)
+    }
     _handleCallMap = (callMap) => {
         console.log("{" + this.options.log_id + "} ", "call map length", Object.keys(callMap).length, this._getCurrentStream())
 
         if (this._getCurrentStream()) {
             Object.keys(callMap).forEach((key, idx) => {
                 if (idx < this.options.auto_call_peer) {
-                    this.connectStreamWithPeer(key, this._getCurrentStream())
+                    if (!this._mediaConnectionMap[key]) {
+                        this._mediaConnectionMap[key] = true
+                        this.connectStreamWithPeer(key, this._getCurrentStream())
+                    }
                 } else {
                     // will not connect to this peer automatically
                     this.emit("manual-stream", key)
@@ -339,15 +362,19 @@ class MeshPeer extends EventEmitter {
     }
 
     _serveMediaConnection = (mc) => {
-        console.log("mc", mc)
         mc.on("stream", (stream) => {
+            this._mediaConnectionMap[mc.peer] = true
             console.log("{" + this.options.log_id + "} ", "stream recevied by", this.id, " from ", mc.peer, stream, " when listening")
             this.emit("stream", stream, mc.peer)
         })
         mc.on("error", (error) => {
+            delete this._mediaConnectionMap[mc.peer]
+            this.emit("streamdrop", mc.peer)
             console.log("{" + this.options.log_id + "} ", "stream error by", this.id, " from ", mc.peer, error, " when listening")
         })
         mc.on("close", () => {
+            delete this._mediaConnectionMap[mc.peer]
+            this.emit("streamdrop", mc.peer)
             console.log("{" + this.options.log_id + "} ", "stream close by", this.id, " from ", mc.peer, " when listening")
         })
     }
@@ -355,6 +382,12 @@ class MeshPeer extends EventEmitter {
     _currentStream = false
     _setCurrentStream = (stream) => {
         this._currentStream = stream
+        if (!stream) {
+            Object.keys(this._mediaConnectionMap).forEach(key => {
+                if (this._mediaConnectionMap[key].close)
+                    this._mediaConnectionMap[key].close()
+            })
+        }
     }
     _getCurrentStream = () => {
         return this._currentStream
@@ -371,9 +404,11 @@ class MeshPeer extends EventEmitter {
             this.emit("stream", stream, mc.peer)
         })
         mc.on("close", () => {
+            this.emit("streamdrop", mc.peer)
             console.log("{" + this.options.log_id + "} ", "media connection close")
         })
         mc.on("error", (err) => {
+            this.emit("streamdrop", mc.peer)
             console.log("{" + this.options.log_id + "} ", "media connection error", err)
         })
 
@@ -402,6 +437,10 @@ class MeshPeer extends EventEmitter {
 
         Object.keys(this._dataConnectionMap).forEach(key => {
             this._dataConnectionMap[key].close()
+        })
+        Object.keys(this._mediaConnectionMap).forEach(key => {
+            if (this._mediaConnectionMap[key].close)
+                this._mediaConnectionMap[key].close()
         })
         this._peer && this._peer.destroy()
         this.roomid = false

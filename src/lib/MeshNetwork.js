@@ -46,10 +46,6 @@ class MeshNetwork extends EventEmitter {
      */
     hostDataConnection = false
     /**
-     * host media connection
-     */
-    hostMediaConnection = false
-    /**
      * list of peers current in this mesh
      */
     _peerlist = []
@@ -166,6 +162,8 @@ class MeshNetwork extends EventEmitter {
     _listenData = data => this.emit("data", data)
 
     _listenStream = (stream, id) => this.emit("stream", stream, id)
+
+    _listenStreamDrop = (id) => this.emit("streamdrop", id)
     /**
      * listen all peer events
      */
@@ -177,6 +175,7 @@ class MeshNetwork extends EventEmitter {
         this.currentPeer.on("data", this._listenData)
         this.currentPeer.on("hostdropped", this._listenHostDropped)
         this.currentPeer.on("stream", this._listenStream)
+        this.currentPeer.on("streamdrop", this._listenStreamDrop)
 
         this.currentPeer.on("error-peer-unavailable", (err) => {
             let host = new MeshHost(this.options)
@@ -219,6 +218,7 @@ class MeshNetwork extends EventEmitter {
         this.currentPeer.off("data", this._listenData)
         this.currentPeer.off("hostdropped", this._listenHostDropped)
         this.currentPeer.off("stream", this._listenStream)
+        this.currentPeer.off("streamdrop", this._listenStreamDrop)
     }
 
     /**
@@ -345,19 +345,21 @@ class MeshNetwork extends EventEmitter {
 
 
     call = (stream) => {
-        if (this.hostMediaConnection) {
-            this.hostMediaConnection.send({
+        this.currentPeer._setCurrentStream(stream)
+        if (this.hostDataConnection) {
+            this.hostDataConnection.send({
                 "call": true
             })
         }
-        this.currentPeer._setCurrentStream(stream)
-        // if (this._peerlist.length > 0) {
-        //     this._peerlist.forEach(key => {
-        //         if (key !== this.id)
-        //             this.currentPeer.connectStreamWithPeer(key, stream)
-        //     })
-        // }
-        // not directly establishing connnection first will inform owner and then create a connection
+    }
+
+    disconnectCall = () => {
+        this.currentPeer._setCurrentStream(false)
+        if (this.hostDataConnection) {
+            this.hostDataConnection.send({
+                "call": false
+            })
+        }
     }
 
     /**

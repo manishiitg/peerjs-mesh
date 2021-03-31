@@ -21,6 +21,31 @@ const PeerNode = ({ roomId, idx, removePeer, onData, onSync, onIsHost, meshData,
 
     const [streams, setStreams] = useState({})
 
+    const stopCall = () => {
+        setStreams(streams => {
+            let stream = streams["mine"]
+            if (!stream) return streams
+            console.log(stream, streams)
+            stream.getTracks().forEach(function (track) {
+                track.stop();
+            });
+            peer.current.disconnectCall(stream)
+            delete streams["mine"]
+            return Object.assign({}, streams)
+        })
+    }
+    const startCall = () => {
+        var getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+        getUserMedia({ video: true, audio: true }, function (stream) {
+
+            peer.current.call(stream)
+
+            setStreams(streams => {
+                streams["mine"] = stream
+                return Object.assign({}, streams)
+            })
+        })
+    }
     useEffect(() => {
         console.log("================= peer joining network =============")
 
@@ -34,6 +59,8 @@ const PeerNode = ({ roomId, idx, removePeer, onData, onSync, onIsHost, meshData,
                 // }
             }
         )
+
+        startCall()
         peer.current.on("joined", (id) => {
             setId(id)
             setJoined(true)
@@ -44,16 +71,8 @@ const PeerNode = ({ roomId, idx, removePeer, onData, onSync, onIsHost, meshData,
             setError("")
             if (issync) onSync(idx)
 
-            if (issync) {
-                var getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-                getUserMedia({ video: true, audio: true }, function (stream) {
-                    console.log("stream", stream)
-                    setStreams(streams => {
-                        streams["mine"] = stream
-                        return Object.assign({}, streams)
-                    })
-                })
-            }
+
+
         })
         peer.current.on("stream", (stream, id) => {
             setStreams(streams => {
@@ -61,14 +80,25 @@ const PeerNode = ({ roomId, idx, removePeer, onData, onSync, onIsHost, meshData,
                 return Object.assign({}, streams)
             })
         })
+        peer.current.on("streamdrop", (id) => {
+            setStreams(streams => {
+                console.log("streamdropstreamdropstreamdropstreamdrop", id, idx, streams)
+                delete streams[id]
+                console.log("streamsss", streams)
+                return Object.assign({}, streams)
+            })
+        })
         peer.current.on("peerjoined", (id, peerlist) => {
             setPeers(Object.assign([], peerlist))
         })
         peer.current.on("peerdropped", (id, peerlist) => {
+            setStreams(streams => {
+                delete streams[id]
+                return { ...streams }
+            })
             setPeers(Object.assign([], peerlist))
         })
         peer.current.on("hostconnected", (ishost) => {
-            console.log("hostconnectedhostconnectedhostconnectedhostconnectedhostconnectedhostconnectedhostconnected", ishost)
             setIsHostPeer(ishost)
             if (ishost) onIsHost(idx)
         })
@@ -107,7 +137,7 @@ const PeerNode = ({ roomId, idx, removePeer, onData, onSync, onIsHost, meshData,
                     {streams && Object.keys(streams).map((xid) => {
                         return (
                             <div className="d-flex" key={xid}>
-                                <VideoStream stream={streams[id]} myid={id} id={xid} />
+                                <VideoStream stream={streams[xid]} id={xid} />
                             </div>
                         )
                     })}
@@ -133,6 +163,14 @@ const PeerNode = ({ roomId, idx, removePeer, onData, onSync, onIsHost, meshData,
                         {sync && <button className="btn btn-outline-danger btn-small" onClick={() => {
                             sendDataToMeshAndVerify(idx)
                         }}>Ping Random Data</button>}
+
+                        {!streams["mine"] && <button className="btn btn-outline-danger btn-small" onClick={() => {
+                            startCall()
+                        }}>Start Call</button>}
+
+                        {streams["mine"] && <button className="btn btn-outline-danger btn-small" onClick={() => {
+                            stopCall()
+                        }}>Stop Call</button>}
                     </div>
                 </div>
                 {error && <div className="alert alert-danger" role="alert">

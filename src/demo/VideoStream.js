@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react"
 import classnames from "classnames"
 
-const VideoStream = ({ stream, id, myid }) => {
+const VideoStream = ({ stream, id }) => {
     const videoRef = useRef()
     useEffect(() => {
         videoRef.current.srcObject = stream

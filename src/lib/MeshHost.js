@@ -124,9 +124,19 @@ export default class MeshHost extends EventEmitter {
                 })
                 dc.send({ "message_reciept": data.id })
             }
-            if (data.call) {
-                dc.send({ "callMap": this._callMap })
-                this._callMap[dc.peer] = true
+            if ("call" in data) {
+                if (!data.call) {
+                    Object.keys(this._dataConnectionMap).forEach(key => {
+                        if (key !== dc.peer) //dont send data to the same host
+                            this._dataConnectionMap[key].send({
+                                "callstopped": dc.peer
+                            })
+                    })
+                    delete this._callMap[dc.peer]
+                } else {
+                    dc.send({ "callMap": this._callMap })
+                    this._callMap[dc.peer] = true
+                }
             }
 
         })
