@@ -1,8 +1,8 @@
 {
     "name": "@manishiitg/peerjs-mesh",
-    "version": "0.0.0",
+    "version": "0.0.1",
     "description": "Common ReactJS components",
-    "main": "main.js",
+    "main": "mesh.js",
     "publishConfig": {
         "registry": "https://npm.pkg.github.com/"
     },
