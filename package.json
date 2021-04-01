@@ -2,7 +2,7 @@
   "name": "@manishiitg/peerjs-mesh",
   "version": "0.0.1",
   "description": "Simple P2P Mesh using peerjs",
-  "main": "lib/mesh.js",
+  "main": "mesh.js",
   "scripts": {
     "build": "babel lib -d dist --delete-dir-on-start --copy-files --no-copy-ignored --ignore **/*.test.js",
     "test": "jest --ci --runInBand --coverage --reporters=default --reporters=jest-junit",
@@ -11,10 +11,8 @@
     "pretest-disable": "npm-run-all --parallel pretest:*",
     "pretest:lint": "npm run lint",
     "documentation": "documentation build lib/** --config documentation.yml --infer-private --access public -f html -o doc",
-    "pretest:inspect": "jscpd -c .jscpd.json -i \"**/*.test.js,**/*.styles.js,**/*.css\" lib"
-  },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com/"
+    "pretest:inspect": "jscpd -c .jscpd.json -i \"**/*.test.js,**/*.styles.js,**/*.css\" lib",
+    "release": "release-it"
   },
   "repository": "https://github.com/manishiitg/peerjs-mesh",
   "dependencies": {
