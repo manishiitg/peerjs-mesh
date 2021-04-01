@@ -12,8 +12,8 @@
     "pretest:lint": "npm run lint",
     "documentation": "documentation build lib/** --config documentation.yml --infer-private --access public -f html -o doc",
     "pretest:inspect": "jscpd -c .jscpd.json -i \"**/*.test.js,**/*.styles.js,**/*.css\" lib",
-    "release": "npm run build && npm version patch --version && cp package.json dist/ && npm run publish",
-    "release:win": "npm run build && npm version patch --force && copy package.json dist && npm run publish"
+    "release": "npm run build && npm version patch --version && cp package.json dist && npm run publish",
+    "release:win": "npm run build && npm version patch --force && copy package.json dist && npm publish"
   },
   "repository": "https://github.com/manishiitg/peerjs-mesh",
   "dependencies": {
