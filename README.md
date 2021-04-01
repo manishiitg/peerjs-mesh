@@ -1,8 +1,118 @@
-## Peerjs Mesh ##
+# Peerjs Mesh #
 
 A very simple implementation of webrtc p2p mesh build on top of peerjs
 This is quite experimental at this stage and only in early development mode.
 
+Here is an example of how this works https://github.com/manishiitg/peerjs-mesh-example  
+
+This example is based on reactjs
+
+## API ##
+
+Import it in your project using
+
+```
+import { mesh } from "@manishiitg/peerjs-mesh"
+
+```
+
+Next, you cannot to a mesh using 
+
+```
+let mesh = mesh(roomid)
+```
+here room is a unique id for every peer in this mesh. 
+
+More options 
+
+```
+let mesh = mesh("XXXXX",
+            {
+                "log_id": "peer" + idx,  //optional, this is only for debugging purposes
+                
+                "initData": {  // optional this is only if want to setup initial data for the peer which all other peers in the mesh will recieved
+                    "name": idx
+                }
+                 "connection": { //optional connection parameters
+                     "host": "peerjs.platoo-platform.com", 
+                     "secure": true,
+                     "path": "myapp"
+                 }
+            }
+        )
+
+```
+There are many more options possible refer to documentation for it.
+
+#### Events ####
+
+```
+
+mesh.on("joined", (id) => {
+    // this is fired when peer joins the peerjs network.
+    // this event doesn't mean the peer has joined the mesh
+})
+
+
+mesh.on("sync", (issync) => {
+    // this event is fired when the peer is connected to the mesh
+    // and in sycn with other peers as well
+})
+
+
+await mesh.waitToJoin() 
+// this can be used to wait for the join event
+
+await mesh.waitToSync()
+// this can be used to wait for the mesh to sync in the network
+
+mesh.send({....}) 
+// send your data object to the mesh
+
+mesh.call(stream)
+
+// send your stream to the mesh
+
+mesh.disconnectCall()
+
+// stop your stream to the mesh
+
+
+mesh.on("data", (data) => {
+    // data sent by another peer in the mesh
+})
+
+mesh.on("stream", (stream, id) => {
+    // when a new peer connects to the mesh and shares stream
+})
+
+mesh.on("streamdrop", (id) => {
+    // when a peer stops streaming
+})
+
+mesh.on("initData", (id, data) => {
+        // here id is the unique of another peer
+        // data is the data set by the peer        
+})
+
+mesh.on("peerjoined", (id, peerlist) => {
+    // when a new peer joines the mesh
+})
+
+mesh.on("peerdropped", (id, peerlist) => {
+    // when a new peer drops the mesh
+})
+
+mesh.on("hostconnected", (ishost) => {
+            // when the current peer connects with the host
+            // ishost means current peer is the other or not
+        })
+
+mesh.on("error", (msg) => {
+     
+        })
+
+```
 
 
 
