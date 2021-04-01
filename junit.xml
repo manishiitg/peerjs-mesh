@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="2" failures="2" errors="0" time="2.309">
+  <testsuite name="after call to peer #2" errors="0" failures="2" skipped="0" timestamp="2021-03-31T18:22:15" time="1.231" tests="2">
+    <testcase classname="after call to peer #2 test socket mock" name="after call to peer #2 test socket mock" time="0.126">
+      <failure>Error: Unhandled error. (Error: Lost connection to server.
+    at i.emitError (C:\Users\manis\work\peerjs-mesh\node_modules\peerjs\dist\peerjs.min.js:66:9091)
+    at r.&lt;anonymous&gt; (C:\Users\manis\work\peerjs-mesh\node_modules\peerjs\dist\peerjs.min.js:66:4552)
+    at r.i.emit (C:\Users\manis\work\peerjs-mesh\node_modules\peerjs\dist\peerjs.min.js:46:1288)
+    at WebSocket._socket._disconnected._socket.onclose (C:\Users\manis\work\peerjs-mesh\node_modules\peerjs\dist\peerjs.min.js:52:2220)
+    at C:\Users\manis\work\peerjs-mesh\node_modules\mock-socket\src\event\target.js:65:18
+    at Array.forEach (&lt;anonymous&gt;)
+    at WebSocket.dispatchEvent (C:\Users\manis\work\peerjs-mesh\node_modules\mock-socket\src\event\target.js:61:15)
+    at WebSocket.delayCallback (C:\Users\manis\work\peerjs-mesh\node_modules\mock-socket\src\websocket.js:88:14)
+    at C:\Users\manis\work\peerjs-mesh\node_modules\mock-socket\src\helpers\delay.js:10:41
+    at Timeout.task [as _onTimeout] (C:\Users\manis\work\peerjs-mesh\node_modules\jsdom\lib\jsdom\browser\Window.js:516:19)
+    at listOnTimeout (internal/timers.js:554:17)
+    at processTimers (internal/timers.js:497:7) {
+  type: &apos;network&apos;
+})Error [ERR_UNHANDLED_ERROR]: Unhandled error. (Error: Lost connection to server.
+    at i.emitError (C:\Users\manis\work\peerjs-mesh\node_modules\peerjs\dist\peerjs.min.js:66:9091)
+    at r.&lt;anonymous&gt; (C:\Users\manis\work\peerjs-mesh\node_modules\peerjs\dist\peerjs.min.js:66:4552)
+    at r.i.emit (C:\Users\manis\work\peerjs-mesh\node_modules\peerjs\dist\peerjs.min.js:46:1288)
+    at WebSocket._socket._disconnected._socket.onclose (C:\Users\manis\work\peerjs-mesh\node_modules\peerjs\dist\peerjs.min.js:52:2220)
+    at C:\Users\manis\work\peerjs-mesh\node_modules\mock-socket\src\event\target.js:65:18
+    at Array.forEach (&lt;anonymous&gt;)
+    at WebSocket.dispatchEvent (C:\Users\manis\work\peerjs-mesh\node_modules\mock-socket\src\event\target.js:61:15)
+    at WebSocket.delayCallback (C:\Users\manis\work\peerjs-mesh\node_modules\mock-socket\src\websocket.js:88:14)
+    at C:\Users\manis\work\peerjs-mesh\node_modules\mock-socket\src\helpers\delay.js:10:41
+    at Timeout.task [as _onTimeout] (C:\Users\manis\work\peerjs-mesh\node_modules\jsdom\lib\jsdom\browser\Window.js:516:19)
+    at listOnTimeout (internal/timers.js:554:17)
+    at processTimers (internal/timers.js:497:7) {
+  type: &apos;network&apos;
+})
+    at MeshPeer.emit (events.js:304:17)
+    at i.&lt;anonymous&gt; (C:\Users\manis\work\peerjs-mesh\lib\MeshPeer.js:86:18)
+    at i.emit (C:\Users\manis\work\peerjs-mesh\node_modules\peerjs\dist\peerjs.min.js:46:1326)
+    at i.emitError (C:\Users\manis\work\peerjs-mesh\node_modules\peerjs\dist\peerjs.min.js:66:9119)
+    at r.&lt;anonymous&gt; (C:\Users\manis\work\peerjs-mesh\node_modules\peerjs\dist\peerjs.min.js:66:4552)
+    at r.i.emit (C:\Users\manis\work\peerjs-mesh\node_modules\peerjs\dist\peerjs.min.js:46:1288)
+    at WebSocket._socket._disconnected._socket.onclose (C:\Users\manis\work\peerjs-mesh\node_modules\peerjs\dist\peerjs.min.js:52:2220)
+    at C:\Users\manis\work\peerjs-mesh\node_modules\mock-socket\src\event\target.js:65:18
+    at Array.forEach (&lt;anonymous&gt;)
+    at WebSocket.dispatchEvent (C:\Users\manis\work\peerjs-mesh\node_modules\mock-socket\src\event\target.js:61:15)</failure>
+    </testcase>
+    <testcase classname="after call to peer #2 Peer#1 should has id #1" name="after call to peer #2 Peer#1 should has id #1" time="0.002">
+      <failure>Error: A mock server is already listening on this url
+    at new Server (C:\Users\manis\work\peerjs-mesh\node_modules\mock-socket\src\server.js:27:13)
+    at createMockServer (C:\Users\manis\work\peerjs-mesh\tests\mesh.test.js:15:24)
+    at Object.&lt;anonymous&gt; (C:\Users\manis\work\peerjs-mesh\tests\mesh.test.js:36:22)
+    at Object.asyncJestLifecycle (C:\Users\manis\work\peerjs-mesh\node_modules\jest-jasmine2\build\jasmineAsyncInstall.js:58:37)
+    at C:\Users\manis\work\peerjs-mesh\node_modules\jest-jasmine2\build\queueRunner.js:45:12
+    at new Promise (&lt;anonymous&gt;)
+    at mapper (C:\Users\manis\work\peerjs-mesh\node_modules\jest-jasmine2\build\queueRunner.js:28:19)
+    at C:\Users\manis\work\peerjs-mesh\node_modules\jest-jasmine2\build\queueRunner.js:75:41
+    at processTicksAndRejections (internal/process/task_queues.js:93:5)</failure>
+    </testcase>
+  </testsuite>
+</testsuites>

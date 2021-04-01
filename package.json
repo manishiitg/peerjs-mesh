@@ -5,10 +5,10 @@
   "main": "lib/mesh.js",
   "scripts": {
     "build": "babel lib -d dist --delete-dir-on-start --copy-files --no-copy-ignored --ignore **/*.test.js",
-    "test": "jest --ci --runInBand --coverage --reporters=default --reporters=jest-junit --env=jest-environment-jsdom-sixteen",
+    "test": "jest --ci --runInBand --coverage --reporters=default --reporters=jest-junit",
     "lint": "npm-run-all --parallel lint:*",
     "lint:js": "eslint lib",
-    "pretest": "npm-run-all --parallel pretest:*",
+    "pretest-disable": "npm-run-all --parallel pretest:*",
     "pretest:lint": "npm run lint",
     "documentation": "documentation build lib/** --config documentation.yml --infer-private --access public -f html -o doc",
     "pretest:inspect": "jscpd -c .jscpd.json -i \"**/*.test.js,**/*.styles.js,**/*.css\" lib"
@@ -37,6 +37,7 @@
     "jest-environment-jsdom-sixteen": "^1.0.3",
     "jest-junit": "^12.0.0",
     "jscpd": "^3.3.25",
+    "mock-socket": "^9.0.3",
     "npm-run-all": "^4.1.5",
     "prettier": "^2.2.1"
   },
