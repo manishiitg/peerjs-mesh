@@ -1,6 +1,9 @@
 name: Peerjs Mesh
 
 on:
+  push:
+    branches:
+    - master
   release:
     types: [created]
 
