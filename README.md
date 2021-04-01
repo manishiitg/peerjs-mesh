@@ -1,8 +1,10 @@
 ## Peerjs Mesh ##
 
 A very simple implementation of webrtc p2p mesh build on top of peerjs
-
 This is quite experimental at this stage and only in early development mode.
+
+
+
 
 #### How this works? ####
 
