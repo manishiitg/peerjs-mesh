@@ -112,6 +112,10 @@ mesh.on("error", (msg) => {
      
         })
 
+mesh.cleanup()
+// should be called to disconnect and cleanup peer from the mesh
+// this will not close the mesh other peers will still remain connect
+
 ```
 
 
