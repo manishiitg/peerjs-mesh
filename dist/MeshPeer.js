@@ -9,13 +9,23 @@ var _peerjs = _interopRequireDefault(require("peerjs"));
 
 var _uuid = require("uuid");
 
+/**
+ * @param obj
+ * @example
+ */
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+/**
+ * @param obj
+ * @param key
+ * @param value
+ * @example
+ */
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 const EventEmitter = require('events');
 /**
- * MeshPeer classes. This handle all the logic of the peer inside a mesh
+ * MeshPeer classes. This handle all the logic of the peer inside a mesh.
  */
 
 
@@ -503,7 +513,7 @@ class MeshPeer extends EventEmitter {
     this.options = options;
   }
   /**
-   * if of the current peer in the peerjs network
+   * If of the current peer in the peerjs network.
    */
 
 

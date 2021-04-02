@@ -11,15 +11,25 @@ var _MeshPeer = _interopRequireDefault(require("./MeshPeer"));
 
 var _uuid = require("uuid");
 
+/**
+ * @param obj
+ * @example
+ */
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+/**
+ * @param obj
+ * @param key
+ * @param value
+ * @example
+ */
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 const EventEmitter = require('events');
 /**
  * Mesh Network class is responsible for managing the peers inside a mesh and also the host
  * It will manage the different type of mesh modes i.e host/full mesh
- * A client application will only interact with the MeshNetwork class
+ * A client application will only interact with the MeshNetwork class.
  */
 
 
@@ -443,7 +453,7 @@ class MeshNetwork extends EventEmitter {
     }
   }
   /**
-   * instance of the current peer
+   * Instance of the current peer.
    */
 
 
