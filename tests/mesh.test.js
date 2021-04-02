@@ -1,105 +1,77 @@
-import Peer, { peerjs } from "peerjs"
+import { WebSocket, Server } from 'mock-socket';
 
-import { mesh } from "../lib/mesh"
-//enable support for WebRTC
-peerjs.util.supports.audioVideo = true;
-peerjs.util.randomToken = () => 'testToken';
+class ChatApp {
 
-import "./fake"
-import { Server } from 'mock-socket';
+    constructor(url) {
+        this.messages = [];
+        this.connection = new WebSocket(url);
+
+        this.connection.onmessage = event => {
+            console.log("on meessage");
+            this.messages.push(event.data);
+        };
+    }
+
+    sendMessage(message) {
+        this.connection.send(message);
+    }
+}
 
 const createMockServer = () => {
-    mesh("123")
 
-    const fakeURL = 'ws://localhost:8080/peerjs?key=peerjs&id=1&token=testToken';
+    const fakeURL = 'ws://localhost:8080';
     const mockServer = new Server(fakeURL);
 
-    console.log("create mock server")
+    console.log("create mock server");
     mockServer.on('connection', socket => {
-
+        
         console.log("connection")
         socket.on('message', data => {
             console.log("message", data)
             socket.send('test message from mock server');
         });
 
-        socket.send(JSON.stringify({ type: "open" }));
     });
 
     return mockServer;
 }
 
-describe("after call to peer #2", function () {
+describe("mock socket", function () {
+
     let mockServer;
 
     beforeEach(function () {
         mockServer = createMockServer();
     });
 
-    it("test socket mock", (don) => {
-        class ChatApp {
-            constructor(url) {
-                this.messages = [];
-                this.connection = new WebSocket(url);
+    it("test socket mock 1", (done) => {
 
-                this.connection.onmessage = event => {
-                    console.log("on meessage")
-                    done()
-                    this.messages.push(event.data);
-                };
-            }
-
-            sendMessage(message) {
-                this.connection.send(message);
-            }
-        }
-
-        const app = new ChatApp("ws://localhost:8080/peerjs");
-        app.sendMessage('test message from app'); // NOTE: this line creates a micro task
+        const app = new ChatApp('ws://localhost:8080');
+        app.sendMessage('test message from app 1');
+        setTimeout(() => {
+            expect(app.messages.length).toEqual(1);
+            expect(app.messages[0]).toEqual('test message from mock server');
+            console.log(app.messages);
+            done();
+        }, 100);
 
     })
 
-    it("Peer#1 should has id #1", function () {
+    it("test socket mock 2", (done) => {
 
+        const app = new ChatApp('ws://localhost:8080');
+        app.sendMessage('test message from app 2');
+        setTimeout(() => {
+            expect(app.messages.length).toEqual(1);
+            expect(app.messages[0]).toEqual('test message from mock server');
+            console.log(app.messages);
+            done();
+        }, 100);
 
-        // const peer1 = new Peer('1', { port: 8080, host: 'localhost', debug: 3 });
-
-        // console.log("123123")
-        // expect(peer1.open).toBeFalsy()
-        // console.log("123123")
-
-        // const mediaOptions = {
-        //     metadata: { var: '123' },
-        //     constraints: {
-        //         mandatory: {
-        //             OfferToReceiveAudio: true,
-        //             OfferToReceiveVideo: true
-        //         }
-        //     }
-        // };
-
-
-        // peer1.once('open', (id) => {
-        //     console.log("#3333")
-        //     expect(id).toBe("1")
-        //     //@ts-ignore
-        //     expect(peer1._lastServerId).toBe('1');
-        //     expect(peer1.disconnected).toBeFalsy()
-        //     expect(peer1.destroyed).toBeFalsy()
-        //     expect(peer1.open).toBeTruthy()
-
-        //     peer1.destroy();
-
-        //     expect(peer1.disconnected).toBeTruthy()
-        //     expect(peer1.destroyed).toBeTruthy()
-        //     expect(peer1.open).toBeFalsy()
-        //     expect(peer1.connections).toHaveLength(0)
-
-        //     done();
-        // });
     });
 
     afterEach(function () {
         mockServer.stop();
     });
+
 });
