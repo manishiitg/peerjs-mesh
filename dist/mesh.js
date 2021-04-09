@@ -7,9 +7,13 @@ exports.mesh = void 0;
 
 var _MeshNetwork = _interopRequireDefault(require("./MeshNetwork"));
 
+/**
+ * @param obj
+ * @example
+ */
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-/**
+/**.
  * This is used to initialize the mesh and add current peer to the mesh
  * 
  * @param {*} room this is name of the mesh or room where all the peers will connect to. If there are multiple peers they will all join to the same room name
@@ -23,6 +27,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
  * max_mesh_peers: the maximum number of peers a mesh can have
  * mesh_mode: the mode of the mesh. either "host" or "full". read readme for more details on each of them
  * @returns it returns a MeshNetwork object 
+ * @example
  */
 const mesh = (room, options = {}) => {
   if (!options.log_id) {
