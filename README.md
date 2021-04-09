@@ -143,6 +143,11 @@ This is because peerjs allows only unique peers for it.
 Then all other peers will again establish connect to this new host.
 
 
+### TODO ###
+
+1. create a simple demo website in which people can do group calls 
+2. if more people join on a call maybe implement a list or paging system. with ability to pin people as well
+
 ##### Ideas for mesh modes #####
 
 Mesh Mode: Host
