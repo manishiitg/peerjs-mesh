@@ -147,6 +147,7 @@ Then all other peers will again establish connect to this new host.
 
 1. create a simple demo website in which people can do group calls 
 2. if more people join on a call maybe implement a list or paging system. with ability to pin people as well
+3. add support to change stream in between
 
 ##### Ideas for mesh modes #####
 
