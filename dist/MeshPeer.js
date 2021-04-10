@@ -216,9 +216,9 @@ class MeshPeer extends EventEmitter {
         console.log("{" + this.options.log_id + "} ", "data recevied by", this.id, " from ", dc.peer, data, " when serving");
 
         if (data.meshlimit) {
-          console.log("{" + this.options.log_id + "} ", "mesh limit exceeded try again later", this.meshlimit);
-          this.emit("error", "mesh limit exceeded try again later" + this.meshlimit);
-          this.emit("meshlimitexceeded", this.meshlimit);
+          console.log("{" + this.options.log_id + "} ", "mesh limit exceeded try again later", this.options.mesh_limit);
+          this.emit("error", "mesh limit exceeded try again later" + this.options.mesh_limit);
+          this.emit("meshlimitexceeded", this.options.mesh_limit);
           dc.close();
         }
 
@@ -417,7 +417,7 @@ class MeshPeer extends EventEmitter {
 
     _defineProperty(this, "_serveMediaConnection", mc => {
       mc.on("stream", stream => {
-        this._mediaConnectionMap[mc.peer] = true;
+        this._mediaConnectionMap[mc.peer] = mc;
         console.log("{" + this.options.log_id + "} ", "stream recevied by", this.id, " from ", mc.peer, stream, " when listening");
         this.emit("stream", stream, mc.peer);
       });
@@ -435,13 +435,80 @@ class MeshPeer extends EventEmitter {
 
     _defineProperty(this, "_currentStream", false);
 
-    _defineProperty(this, "_setCurrentStream", stream => {
-      this._currentStream = stream;
+    _defineProperty(this, "_setCurrentStream", (stream, usePreviousStream) => {
+      if (!this._currentStream) {
+        this._currentStream = stream;
+        return true;
+      }
 
       if (!stream) {
         Object.keys(this._mediaConnectionMap).forEach(key => {
           if (this._mediaConnectionMap[key].close) this._mediaConnectionMap[key].close();
         });
+        return false;
+      } else {
+        if (this._currentStream.id === stream.id) {
+          console.log("{" + this.options.log_id + "} ", "stream id is the same", stream.id, " ==== ", this._currentStream.id, " hence not doing anything!");
+          return true;
+        } else {
+          let hasVideo = stream.getTracks().find(track => track.kind === "video");
+          let hasAudio = stream.getTracks().find(track => track.kind === "audio");
+          console.log("{" + this.options.log_id + "} ", "hasVideo", hasVideo);
+          console.log("{" + this.options.log_id + "} ", "hasAudio", hasAudio);
+          console.log("{" + this.options.log_id + "} ", "this._mediaConnectionMap", this._mediaConnectionMap);
+
+          if (hasVideo) {
+            Object.keys(this._mediaConnectionMap).forEach(key => {
+              console.log(this._mediaConnectionMap[key].peerConnection);
+
+              let videoTrack = this._mediaConnectionMap[key].peerConnection.getSenders().find(rtpsender => {
+                return rtpsender.track && rtpsender.track.kind === "video";
+              });
+
+              console.log("{" + this.options.log_id + "} ", "videoTrack", videoTrack);
+              videoTrack.replaceTrack(hasVideo);
+            });
+          }
+
+          if (hasAudio) {
+            Object.keys(this._mediaConnectionMap).forEach(key => {
+              let audioTrack = this._mediaConnectionMap[key].peerConnection.getSenders().find(rtpsender => {
+                return rtpsender.track && rtpsender.track.kind === "audio";
+              });
+
+              console.log("{" + this.options.log_id + "} ", "audioTrack", audioTrack);
+              audioTrack.replaceTrack(hasAudio);
+            });
+          }
+
+          if (hasAudio && hasVideo) {
+            // new stream has both audio/video so we will save it directly
+            this._currentStream = stream;
+            console.log("{" + this.options.log_id + "} ", "updating stream with new");
+          } else if (hasVideo && !hasAudio) {
+            // new stream has video but no audio. 
+            // will check if previous had audio and use that
+            let oldstreamHasAudio = this._currentStream.getTracks().find(track => track.kind === "audio");
+
+            if (oldstreamHasAudio && usePreviousStream) stream.addTrack(oldstreamHasAudio);
+            this._currentStream = stream;
+            console.log("{" + this.options.log_id + "} ", "updating stream with new but preserving audio");
+          } else if (!hasVideo && hasAudio) {
+            // new stream has audto but no video. 
+            // will check if previous had video and use that
+            let oldstreamHasVideo = this._currentStream.getTracks().find(track => track.kind === "video");
+
+            if (oldstreamHasVideo && usePreviousStream) stream.addTrack(oldstreamHasVideo);
+            this._currentStream = stream;
+            console.log("{" + this.options.log_id + "} ", "updating stream with new but preserving video");
+          } else {
+            //no audio video in stream
+            // do nothing
+            console.log("{" + this.options.log_id + "} ", "discarding new stream as audio video not found");
+          }
+
+          return false;
+        }
       }
     });
 
@@ -454,6 +521,7 @@ class MeshPeer extends EventEmitter {
 
       if (this._getCurrentStream()) {
         mc.answer(this._getCurrentStream());
+        this._mediaConnectionMap[mc.peer] = mc;
       } else {
         console.log("{" + this.options.log_id + "} ", "stream not available");
       }
@@ -463,10 +531,12 @@ class MeshPeer extends EventEmitter {
       });
       mc.on("close", () => {
         this.emit("streamdrop", mc.peer);
+        delete this._mediaConnectionMap[mc.peer];
         console.log("{" + this.options.log_id + "} ", "media connection close");
       });
       mc.on("error", err => {
         this.emit("streamdrop", mc.peer);
+        delete this._mediaConnectionMap[mc.peer];
         console.log("{" + this.options.log_id + "} ", "media connection error", err);
       });
     });

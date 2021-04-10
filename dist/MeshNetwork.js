@@ -310,10 +310,8 @@ class MeshNetwork extends EventEmitter {
       }
     });
 
-    _defineProperty(this, "call", stream => {
-      this.currentPeer._setCurrentStream(stream);
-
-      if (this.hostDataConnection) {
+    _defineProperty(this, "call", (stream, usePreviousStream = true) => {
+      if (this.currentPeer._setCurrentStream(stream)) if (this.hostDataConnection) {
         this.hostDataConnection.send({
           "call": true
         });
