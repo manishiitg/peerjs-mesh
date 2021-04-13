@@ -222,8 +222,10 @@ class MeshHost extends EventEmitter {
             });
             delete this._callMap[dc.peer];
           } else {
+            let callMap = Object.assign({}, this._callMap);
+            if (callMap[dc.peer]) delete callMap[dc.peer];
             dc.send({
-              "callMap": this._callMap
+              "callMap": callMap
             });
             this._callMap[dc.peer] = true;
           }
