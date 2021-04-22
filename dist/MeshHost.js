@@ -36,6 +36,7 @@ class MeshHost extends EventEmitter {
 
       this._connectToPeerJs();
 
+      console.log("this.options.do_health_check", this.options.do_health_check);
       this.options.do_health_check && this._healthCheckPeers();
     });
 
@@ -45,7 +46,8 @@ class MeshHost extends EventEmitter {
       let checkInterval = this.options.do_health_check_interval;
       this._healtCheckInterval = setInterval(() => {
         Object.keys(this._dataConnectionMap).forEach(key => {
-          // console.log("{" + this.options.log_id + "} host health check connection open:", this._dataConnectionMap[key].open, " connection reliable: ", this._dataConnectionMap[key].reliable)
+          console.log("{" + this.options.log_id + "} host health check connection open:", this._dataConnectionMap[key].open, " connection reliable: ", this._dataConnectionMap[key].reliable);
+
           this._dataConnectionMap[key].send({
             "healthcheck": "ping"
           });

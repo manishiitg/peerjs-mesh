@@ -198,6 +198,8 @@ class MeshPeer extends EventEmitter {
     _defineProperty(this, "_serveDataConnection", dc => {
       if (!dc) return;
       dc.on("data", data => {
+        console.log("{" + this.options.log_id + "} ", "data recevied by", this.id, " from ", dc.peer, data, " when serving");
+
         if (data.healthcheck) {
           if (data.healthcheck === "ping") {
             return dc.send({
@@ -461,12 +463,14 @@ class MeshPeer extends EventEmitter {
             Object.keys(this._mediaConnectionMap).forEach(key => {
               console.log(this._mediaConnectionMap[key].peerConnection);
 
-              let videoTrack = this._mediaConnectionMap[key].peerConnection.getSenders().find(rtpsender => {
-                return rtpsender.track && rtpsender.track.kind === "video";
-              });
+              if (this._mediaConnectionMap[key].peerConnection) {
+                let videoTrack = this._mediaConnectionMap[key].peerConnection.getSenders().find(rtpsender => {
+                  return rtpsender.track && rtpsender.track.kind === "video";
+                });
 
-              console.log("{" + this.options.log_id + "} ", "videoTrack", videoTrack);
-              videoTrack.replaceTrack(hasVideo);
+                console.log("{" + this.options.log_id + "} ", "videoTrack", videoTrack);
+                videoTrack.replaceTrack(hasVideo);
+              }
             });
           }
 
