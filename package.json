@@ -1,6 +1,6 @@
 {
   "name": "@manishiitg/peerjs-mesh",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "description": "Simple P2P Mesh using peerjs",
   "main": "mesh.js",
   "scripts": {
