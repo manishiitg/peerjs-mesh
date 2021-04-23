@@ -87,6 +87,15 @@ class MeshNetwork extends EventEmitter {
       }
     });
 
+    _defineProperty(this, "_removeAllInternalPeers", () => {
+      this._peerlist.filter(p => {
+        this.emit("peerdropped", p);
+      });
+
+      this._peerlist = [];
+      this.currentPeer.closeAllConnections();
+    });
+
     _defineProperty(this, "_removeInternalPeer", id => {
       if (this._peerlist.indexOf(id) >= 0) {
         this._peerlist = this._peerlist.filter(p => p !== id);
@@ -103,6 +112,8 @@ class MeshNetwork extends EventEmitter {
     _defineProperty(this, "_listenPeerDropped", id => {
       this._removeInternalPeer(id);
     });
+
+    _defineProperty(this, "_listenDropped", err => this.emit("dropped", err));
 
     _defineProperty(this, "_listenSync", connectedPeers => {
       console.log("{" + this.options.log_id + "} ", "sync completed", connectedPeers);
@@ -128,6 +139,12 @@ class MeshNetwork extends EventEmitter {
     });
 
     _defineProperty(this, "_listenHostDropped", () => {
+      if (this.options.owner_mode) {
+        if (!this.options.is_owner) {
+          this._removeAllInternalPeers();
+        }
+      }
+
       console.log("{" + this.options.log_id + "} ", "host has dropped this is a major issue need to create a new host");
       this.hostPeer = null;
       this.hostDataConnection = null;
@@ -136,7 +153,7 @@ class MeshNetwork extends EventEmitter {
       this._syncMesh();
     });
 
-    _defineProperty(this, "_listenData", data => this.emit("data", data));
+    _defineProperty(this, "_listenData", (data, id) => this.emit("data", data, id));
 
     _defineProperty(this, "_listenStream", (stream, id) => this.emit("stream", stream, id));
 
@@ -144,9 +161,18 @@ class MeshNetwork extends EventEmitter {
 
     _defineProperty(this, "_listenInitData", (id, data) => this.emit("initData", id, data));
 
+    _defineProperty(this, "_meshTries", 0);
+
     _defineProperty(this, "_listenMeshLimitExceeded", limit => {
-      this.emit("meshlimitexceeded", limit);
-      this.cleanup();
+      this.emit("meshlimitexceeded", limit, this._meshTries); // this.cleanup()
+
+      setTimeout(() => {
+        this._syncStarted = false;
+
+        this._syncMesh();
+
+        this._meshTries = this._meshTries + 1;
+      }, 5000);
     });
 
     _defineProperty(this, "_listenPeerEvents", () => {
@@ -160,8 +186,20 @@ class MeshNetwork extends EventEmitter {
       this.currentPeer.on("streamdrop", this._listenStreamDrop);
       this.currentPeer.on("initData", this._listenInitData);
       this.currentPeer.on("meshlimitexceeded", this._listenMeshLimitExceeded);
+      this.currentPeer.on("dropped", this._listenDropped);
       this.currentPeer.on("error-peer-unavailable", err => {
+        if (this.options.owner_mode) {
+          if (!this.options.is_owner) {
+            console.log("running on owner mode, but you are not owner so need to wait for owner to connect! trying again in ...", this.options.retry_interval, "mili-sec");
+            setTimeout(() => {
+              this._connectToHost();
+            }, this.options.retry_interval);
+            return;
+          }
+        }
+
         let host = new _MeshHost.default(this.options);
+        if (this.options.owner_mode) if (this.options.is_owner) host.setOwnerId(this.currentPeer.id);
         host.connectNetwork(this.room);
         host.on("created", peer => {
           console.log("{" + this.options.log_id + "} ", " host created ", peer);
@@ -203,6 +241,7 @@ class MeshNetwork extends EventEmitter {
       this.currentPeer.off("streamdrop", this._listenStreamDrop);
       this.currentPeer.off("initData", this._listenInitData);
       this.currentPeer.off("meshlimitexceeded", this._listenMeshLimitExceeded);
+      this.currentPeer.off("dropped", this._listenDropped);
     });
 
     _defineProperty(this, "isJoined", () => this.isjoined);
@@ -259,11 +298,12 @@ class MeshNetwork extends EventEmitter {
       }
     });
 
-    _defineProperty(this, "send", data => {
+    _defineProperty(this, "send", (data, to_peer = false) => {
       if (!this.isjoined || this.sync) {
         if (this._peerlist.length > 0) this._messageToSend.push({
           "data": data,
-          "peerlist": this._peerlist
+          "peerlist": to_peer ? [to_peer] : this._peerlist,
+          "to_peer": to_peer
         });
         console.log("{" + this.options.log_id + "} ", "Can send data only once peer has synced with the network");
         return;
@@ -276,19 +316,22 @@ class MeshNetwork extends EventEmitter {
           console.log("{" + this.options.log_id + "} ", "adding data to local cache to send once host connection is established", data, this._messageToSend);
           if (this._peerlist.length > 0) this._messageToSend.push({
             "data": data,
-            "peerlist": this._peerlist
+            "peerlist": to_peer ? [to_peer] : this._peerlist,
+            "to_peer": to_peer
           });
         } else {
           let msg_id = (0, _uuid.v4)();
           this.hostDataConnection.send({
             "message": data,
-            "id": msg_id
+            "id": msg_id,
+            "to_peer": to_peer
           });
 
           this._messageToSend.push({
             "data": data,
-            "peerlist": this._peerlist,
-            "msg_id": msg_id
+            "peerlist": to_peer ? [to_peer] : this._peerlist,
+            "msg_id": msg_id,
+            "to_peer": to_peer
           });
 
           this.hostDataConnection.on("data", data => {
@@ -304,10 +347,18 @@ class MeshNetwork extends EventEmitter {
           });
         }
       } else {
-        this.getPeers().forEach(id => {
-          this.currentPeer.sendData(id, data);
-        });
+        if (to_peer) {
+          this.currentPeer.sendData(to_peer, data);
+        } else {
+          this.getPeers().forEach(id => {
+            this.currentPeer.sendData(id, data);
+          });
+        }
       }
+    });
+
+    _defineProperty(this, "mute", (muted = true) => {
+      this.currentPeer._mute(muted);
     });
 
     _defineProperty(this, "call", (stream, usePreviousStream = true) => {
@@ -344,11 +395,18 @@ class MeshNetwork extends EventEmitter {
 
     _defineProperty(this, "_hostDataConnection", false);
 
-    _defineProperty(this, "_connectToHost", cb => {
-      console.log("{" + this.options.log_id + "} ", "owner doesn't exist either create or connect to owner"); //doing this should ideally reduce time for mesh sync because owner will existing always except for the first host
+    _defineProperty(this, "_connectToHost", () => {
+      console.log("{" + this.options.log_id + "} ", "host doesn't exist either create or connect to host"); //doing this should ideally reduce time for mesh sync because host will existing always except for the first host
 
-      let dc = this.currentPeer.connectWithPeer(this.room); // if we don't add this this event get called multiple times when host disconnects. everytime a host disconects this gets call again
+      let dc = this.currentPeer.connectWithPeer(this.room);
+
+      if (!dc) {
+        // happens during slow internet etc or network gone
+        return;
+      } // if we don't add this this event get called multiple times when host disconnects. 
+      // everytime a host disconects this gets call again
       // so if host disconnects 3 times, the below events get called 3 times
+
 
       dc.on("open", () => {
         console.log("{" + this.options.log_id + "} ", "data connection open with host");
@@ -421,6 +479,7 @@ class MeshNetwork extends EventEmitter {
       this._closePeerEvents();
 
       this.disconnectCall();
+      this._syncStarted = false;
       this.isjoined = false;
       this._dataToPersist = false;
       this.currentPeer && this.currentPeer.cleanup();

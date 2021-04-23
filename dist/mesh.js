@@ -57,6 +57,14 @@ const mesh = (room, options = {}) => {
     options.mesh_limit = 10;
   }
 
+  if (!options.owner_mode) {
+    options.owner_mode = false;
+  } else {
+    if (!options.is_owner) {
+      options.is_owner = false;
+    }
+  }
+
   if (!options.mesh_mode) {
     options.mesh_mode = "host"; // in host mode, there is always on host
     // and host is responsible for communication with all peers

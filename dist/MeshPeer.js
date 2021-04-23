@@ -64,11 +64,17 @@ class MeshPeer extends EventEmitter {
         }
       } else {
         if (err.type === "peer-unavailable") {
+          // The peer you're trying to connect to does not exist.
           this.emit("error-peer-unavailable");
         }
 
         if (err.type === "disconnected" || err.type === "network" || err.type === "server-error" || err.type === "socket-error" || err.type === "socket-closed") {
           console.log("{" + this.options.log_id + "} ", "peer error", this.peerid, err.type, err);
+
+          if (this.id) {
+            //error came after peer was connected might be internet issue etc
+            this.emit("dropped", err);
+          }
 
           if (this.options.retry && this._connectionRetry < this.options.retry) {
             console.log("{" + this.options.log_id + "} ", "retrying connection ", this._connectionRetry);
@@ -195,24 +201,29 @@ class MeshPeer extends EventEmitter {
       return dc;
     });
 
+    _defineProperty(this, "_lastHostPingTime", false);
+
+    _defineProperty(this, "_lastHostPingCheck", false);
+
     _defineProperty(this, "_serveDataConnection", dc => {
       if (!dc) return;
       dc.on("data", data => {
-        console.log("{" + this.options.log_id + "} ", "data recevied by", this.id, " from ", dc.peer, data, " when serving");
-
         if (data.healthcheck) {
           if (data.healthcheck === "ping") {
-            return dc.send({
-              "healthcheck": "pong"
-            }); //return just to skip the console
-          } // not used anymore
-          // if (data.healthcheck === "pong") {
-          //     if (dc.peer !== this.roomid) {
-          //         this._dataConnectionMap[dc.peer] = dc
-          //         this.emit("peer", dc.peer)
-          //     }
-          // }
+            this._lastHostPingTime = new Date().getTime();
 
+            if (this._lastHostPingCheck) {
+              clearTimeout(this._lastHostPingCheck);
+            }
+
+            this._lastHostPingCheck = setTimeout(() => {
+              this.emit("hostdropped");
+            }, this.options.do_health_check_interval * 3);
+            dc.send({
+              "healthcheck": "pong"
+            });
+            return; // just to skip the console
+          }
         }
 
         console.log("{" + this.options.log_id + "} ", "data recevied by", this.id, " from ", dc.peer, data, " when serving");
@@ -283,7 +294,7 @@ class MeshPeer extends EventEmitter {
         }
 
         if (data.message) {
-          this.emit("data", data.message);
+          if (data.from_peer) this.emit("data", data.message, data.from_peer);else this.emit("data", data.message, dc.peer);
         }
 
         if (data.initData) {
@@ -324,7 +335,9 @@ class MeshPeer extends EventEmitter {
           delete this._mediaConnectionMap[dc.peer];
         }
 
-        if (dc.peer === this.id) {} else {
+        if (dc.peer === this.id) {
+          console.log("strnage!!!", dc.peer, this.id);
+        } else {
           if (dc.peer === this.roomid) {
             this.emit("hostdropped");
           } else {
@@ -340,7 +353,9 @@ class MeshPeer extends EventEmitter {
           delete this._mediaConnectionMap[dc.peer];
         }
 
-        if (dc.peer === this.id) {} else {
+        if (dc.peer === this.id) {
+          console.log("strnage!!!", dc.peer, this.id);
+        } else {
           if (dc.peer === this.roomid) {
             this.emit("hostdropped");
           } else {
@@ -392,7 +407,7 @@ class MeshPeer extends EventEmitter {
           }
         }
 
-        Object.keys(callMap).forEach((key, idx) => {
+        Object.keys(callMap).filter(key => callMap[key]).forEach((key, idx) => {
           if (idx < this.options.auto_call_peer) {
             if (!this._mediaConnectionMap[key]) {
               this._mediaConnectionMap[key] = true;
@@ -435,6 +450,16 @@ class MeshPeer extends EventEmitter {
       });
     });
 
+    _defineProperty(this, "_mute", muted => {
+      if (this._currentStream) {
+        this._currentStream.getTracks().forEach(track => {
+          if (track.kind === "audio") {
+            track.enabled = !muted;
+          }
+        });
+      }
+    });
+
     _defineProperty(this, "_currentStream", false);
 
     _defineProperty(this, "_setCurrentStream", (stream, usePreviousStream) => {
@@ -447,6 +472,7 @@ class MeshPeer extends EventEmitter {
         Object.keys(this._mediaConnectionMap).forEach(key => {
           if (this._mediaConnectionMap[key].close) this._mediaConnectionMap[key].close();
         });
+        this._currentStream = stream;
         return false;
       } else {
         if (this._currentStream.id === stream.id) {
@@ -557,6 +583,15 @@ class MeshPeer extends EventEmitter {
       }
     });
 
+    _defineProperty(this, "closeAllConnections", () => {
+      Object.keys(this._dataConnectionMap).forEach(key => {
+        this._dataConnectionMap[key].close();
+      });
+      Object.keys(this._mediaConnectionMap).forEach(key => {
+        if (this._mediaConnectionMap[key].close) this._mediaConnectionMap[key].close();
+      });
+    });
+
     _defineProperty(this, "cleanup", () => {
       console.log("{" + this.options.log_id + "} ", "destroy peer");
       console.log(this._peer);
@@ -567,12 +602,7 @@ class MeshPeer extends EventEmitter {
 
       this._peer.off("close", this._listenPeerClose);
 
-      Object.keys(this._dataConnectionMap).forEach(key => {
-        this._dataConnectionMap[key].close();
-      });
-      Object.keys(this._mediaConnectionMap).forEach(key => {
-        if (this._mediaConnectionMap[key].close) this._mediaConnectionMap[key].close();
-      });
+      this.closeAllConnections();
       this._peer && this._peer.destroy();
       this.roomid = false;
     });
