@@ -86,10 +86,18 @@ class MeshHost extends EventEmitter {
           console.log("{" + this.options.log_id + "} ", "peer error", this.peerid, err.type, err);
 
           if (this.options.retry && this._connectionRetry < this.options.retry) {
-            console.log("{" + this.options.log_id + "} ", "retrying connection ", this._connectionRetry);
-            setTimeout(() => {
-              this._connectToPeerJs(this.peerid);
-            }, this.options.retry_interval);
+            if (this.id) {
+              //error came after peer was connected might be internet issue etc
+              console.log("call dropped at host due to network issues, connecting again");
+              setTimeout(() => {
+                this._connectToPeerJs(this.peerid);
+              }, this.options.retry_interval);
+            } else {
+              console.log("{" + this.options.log_id + "} ", "retrying connection ", this._connectionRetry);
+              setTimeout(() => {
+                this._connectToPeerJs(this.peerid);
+              }, this.options.retry_interval);
+            }
           } else {
             // Object.keys(this._dataConnectionMap).forEach(key => {
             //     this._dataConnectionMap[key].send({
@@ -124,6 +132,7 @@ class MeshHost extends EventEmitter {
 
         if (this.options.connection) {
           connection = this.options.connection;
+          console.log("using connection", connection);
         }
 
         this._peer = new _peerjs.default(this.peerid, {

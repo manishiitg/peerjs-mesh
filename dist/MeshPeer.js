@@ -73,14 +73,18 @@ class MeshPeer extends EventEmitter {
 
           if (this.id) {
             //error came after peer was connected might be internet issue etc
+            console.log("call dropped due to network issues, connecting again");
             this.emit("dropped", err);
-          }
-
-          if (this.options.retry && this._connectionRetry < this.options.retry) {
-            console.log("{" + this.options.log_id + "} ", "retrying connection ", this._connectionRetry);
             setTimeout(() => {
               this._connectToPeerJs(this.peerid);
             }, this.options.retry_interval);
+          } else {
+            if (this.options.retry && this._connectionRetry < this.options.retry) {
+              console.log("{" + this.options.log_id + "} ", "retrying connection ", this._connectionRetry);
+              setTimeout(() => {
+                this._connectToPeerJs(this.peerid);
+              }, this.options.retry_interval);
+            }
           }
         } else {//peer-unavailable will come when connecting to a peer which doesn't exist
         }
@@ -111,6 +115,7 @@ class MeshPeer extends EventEmitter {
 
       if (this.options.connection) {
         connection = this.options.connection;
+        console.log("using connection", connection);
       }
 
       this._peer = new _peerjs.default(this.peerid, {
@@ -502,12 +507,14 @@ class MeshPeer extends EventEmitter {
 
           if (hasAudio) {
             Object.keys(this._mediaConnectionMap).forEach(key => {
-              let audioTrack = this._mediaConnectionMap[key].peerConnection.getSenders().find(rtpsender => {
-                return rtpsender.track && rtpsender.track.kind === "audio";
-              });
+              if (this._mediaConnectionMap[key].peerConnection) {
+                let audioTrack = this._mediaConnectionMap[key].peerConnection.getSenders().find(rtpsender => {
+                  return rtpsender.track && rtpsender.track.kind === "audio";
+                });
 
-              console.log("{" + this.options.log_id + "} ", "audioTrack", audioTrack);
-              audioTrack.replaceTrack(hasAudio);
+                console.log("{" + this.options.log_id + "} ", "audioTrack", audioTrack);
+                audioTrack.replaceTrack(hasAudio);
+              }
             });
           }
 
