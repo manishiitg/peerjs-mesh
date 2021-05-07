@@ -1,6 +1,6 @@
 {
   "name": "@manishiitg/peerjs-mesh",
-  "version": "0.0.26",
+  "version": "0.0.27",
   "description": "Simple P2P Mesh using peerjs",
   "main": "mesh.js",
   "scripts": {
@@ -12,7 +12,7 @@
     "pretest:lint": "npm run lint",
     "documentation": "documentation build lib/** --config documentation.yml --infer-private --access public -f html -o doc",
     "pretest:inspect": "jscpd -c .jscpd.json -i \"**/*.test.js,**/*.styles.js,**/*.css\" lib",
-    "release": "npm run build && npm version patch --version && cp package.json dist && cd dist && npm publish",
+    "release": "npm run build && npm version patch --force && cp package.json dist && cd dist && npm publish",
     "release:win": "npm run build && npm version patch --force && copy package.json dist && cd dist && npm publish"
   },
   "repository": "https://github.com/manishiitg/peerjs-mesh",
