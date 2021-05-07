@@ -191,6 +191,7 @@ class MeshNetwork extends EventEmitter {
         if (this.options.owner_mode) {
           if (!this.options.is_owner) {
             console.log("running on owner mode, but you are not owner so need to wait for owner to connect! trying again in ...", this.options.retry_interval, "mili-sec");
+            this.emit("host-unavailable");
             setTimeout(() => {
               this._connectToHost();
             }, this.options.retry_interval);
