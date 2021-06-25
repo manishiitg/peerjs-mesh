@@ -115,6 +115,7 @@ class MeshPeer extends EventEmitter {
 
       if (this.options.connection) {
         connection = this.options.connection;
+        console.log("using connection", connection);
       }
 
       this._peer = new _peerjs.default(this.peerid, {
@@ -516,21 +517,23 @@ class MeshPeer extends EventEmitter {
 
           if (hasAudio) {
             Object.keys(this._mediaConnectionMap).forEach(key => {
-              let audioTrack = this._mediaConnectionMap[key].peerConnection.getSenders().find(rtpsender => {
-                return rtpsender.track && rtpsender.track.kind === "audio";
-              });
+              if (this._mediaConnectionMap[key].peerConnection) {
+                let audioTrack = this._mediaConnectionMap[key].peerConnection.getSenders().find(rtpsender => {
+                  return rtpsender.track && rtpsender.track.kind === "audio";
+                });
 
-              console.log("{" + this.options.log_id + "} ", "audioTrack", audioTrack);
+                console.log("{" + this.options.log_id + "} ", "audioTrack", audioTrack);
 
-              if (audioTrack) {
-                audioTrack.replaceTrack(hasAudio);
-              } else {
-                //edge case
-                let oldstreamHasVideo = this._currentStream.getTracks().find(track => track.kind === "video");
+                if (audioTrack) {
+                  audioTrack.replaceTrack(hasAudio);
+                } else {
+                  //edge case
+                  let oldstreamHasVideo = this._currentStream.getTracks().find(track => track.kind === "video");
 
-                if (oldstreamHasVideo && usePreviousStream) stream.addTrack(oldstreamHasVideo);
-                this._currentStream = stream;
-                console.log("{" + this.options.log_id + "} ", "updating stream with new but preserving video edge case");
+                  if (oldstreamHasVideo && usePreviousStream) stream.addTrack(oldstreamHasVideo);
+                  this._currentStream = stream;
+                  console.log("{" + this.options.log_id + "} ", "updating stream with new but preserving video edge case");
+                }
               }
             });
           }

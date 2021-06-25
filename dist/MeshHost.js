@@ -132,6 +132,7 @@ class MeshHost extends EventEmitter {
 
         if (this.options.connection) {
           connection = this.options.connection;
+          console.log("using connection", connection);
         }
 
         this._peer = new _peerjs.default(this.peerid, {

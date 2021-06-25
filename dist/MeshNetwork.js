@@ -83,7 +83,7 @@ class MeshNetwork extends EventEmitter {
       if (this._peerlist.indexOf(id) === -1) {
         this._peerlist.push(id);
 
-        this.emit("peerjoined", id, this._peerlist);
+        if (id !== this.id) this.emit("peerjoined", id, this._peerlist);
       }
     });
 
@@ -191,6 +191,7 @@ class MeshNetwork extends EventEmitter {
         if (this.options.owner_mode) {
           if (!this.options.is_owner) {
             console.log("running on owner mode, but you are not owner so need to wait for owner to connect! trying again in ...", this.options.retry_interval, "mili-sec");
+            this.emit("host-unavailable");
             setTimeout(() => {
               this._connectToHost();
             }, this.options.retry_interval);
@@ -401,7 +402,9 @@ class MeshNetwork extends EventEmitter {
       let dc = this.currentPeer.connectWithPeer(this.room);
 
       if (!dc) {
-        // happens during slow internet etc or network gone
+        console.log("host connection undefined!!");
+        this._syncStarted = false; // happens during slow internet etc or network gone
+
         return;
       } // if we don't add this this event get called multiple times when host disconnects. 
       // everytime a host disconects this gets call again
