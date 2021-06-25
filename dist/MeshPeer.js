@@ -73,14 +73,18 @@ class MeshPeer extends EventEmitter {
 
           if (this.id) {
             //error came after peer was connected might be internet issue etc
+            console.log("call dropped due to network issues, connecting again");
             this.emit("dropped", err);
-          }
-
-          if (this.options.retry && this._connectionRetry < this.options.retry) {
-            console.log("{" + this.options.log_id + "} ", "retrying connection ", this._connectionRetry);
             setTimeout(() => {
               this._connectToPeerJs(this.peerid);
             }, this.options.retry_interval);
+          } else {
+            if (this.options.retry && this._connectionRetry < this.options.retry) {
+              console.log("{" + this.options.log_id + "} ", "retrying connection ", this._connectionRetry);
+              setTimeout(() => {
+                this._connectToPeerJs(this.peerid);
+              }, this.options.retry_interval);
+            }
           }
         } else {//peer-unavailable will come when connecting to a peer which doesn't exist
         }
@@ -495,7 +499,17 @@ class MeshPeer extends EventEmitter {
                 });
 
                 console.log("{" + this.options.log_id + "} ", "videoTrack", videoTrack);
-                videoTrack.replaceTrack(hasVideo);
+
+                if (videoTrack) {
+                  videoTrack.replaceTrack(hasVideo);
+                } else {
+                  //edge case
+                  let oldstreamHasAudio = this._currentStream.getTracks().find(track => track.kind === "audio");
+
+                  if (oldstreamHasAudio && usePreviousStream) stream.addTrack(oldstreamHasAudio);
+                  this._currentStream = stream;
+                  console.log("{" + this.options.log_id + "} ", "updating stream with new edge case");
+                }
               }
             });
           }
@@ -507,7 +521,17 @@ class MeshPeer extends EventEmitter {
               });
 
               console.log("{" + this.options.log_id + "} ", "audioTrack", audioTrack);
-              audioTrack.replaceTrack(hasAudio);
+
+              if (audioTrack) {
+                audioTrack.replaceTrack(hasAudio);
+              } else {
+                //edge case
+                let oldstreamHasVideo = this._currentStream.getTracks().find(track => track.kind === "video");
+
+                if (oldstreamHasVideo && usePreviousStream) stream.addTrack(oldstreamHasVideo);
+                this._currentStream = stream;
+                console.log("{" + this.options.log_id + "} ", "updating stream with new but preserving video edge case");
+              }
             });
           }
 
