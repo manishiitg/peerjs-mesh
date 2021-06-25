@@ -500,7 +500,17 @@ class MeshPeer extends EventEmitter {
                 });
 
                 console.log("{" + this.options.log_id + "} ", "videoTrack", videoTrack);
-                videoTrack.replaceTrack(hasVideo);
+
+                if (videoTrack) {
+                  videoTrack.replaceTrack(hasVideo);
+                } else {
+                  //edge case
+                  let oldstreamHasAudio = this._currentStream.getTracks().find(track => track.kind === "audio");
+
+                  if (oldstreamHasAudio && usePreviousStream) stream.addTrack(oldstreamHasAudio);
+                  this._currentStream = stream;
+                  console.log("{" + this.options.log_id + "} ", "updating stream with new edge case");
+                }
               }
             });
           }
@@ -512,8 +522,22 @@ class MeshPeer extends EventEmitter {
                   return rtpsender.track && rtpsender.track.kind === "audio";
                 });
 
+<<<<<<< HEAD
                 console.log("{" + this.options.log_id + "} ", "audioTrack", audioTrack);
                 audioTrack.replaceTrack(hasAudio);
+=======
+              console.log("{" + this.options.log_id + "} ", "audioTrack", audioTrack);
+
+              if (audioTrack) {
+                audioTrack.replaceTrack(hasAudio);
+              } else {
+                //edge case
+                let oldstreamHasVideo = this._currentStream.getTracks().find(track => track.kind === "video");
+
+                if (oldstreamHasVideo && usePreviousStream) stream.addTrack(oldstreamHasVideo);
+                this._currentStream = stream;
+                console.log("{" + this.options.log_id + "} ", "updating stream with new but preserving video edge case");
+>>>>>>> c342057097b9c8eaa1248796df8fd73698ecaf92
               }
             });
           }
