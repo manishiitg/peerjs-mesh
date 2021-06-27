@@ -504,12 +504,14 @@ class MeshPeer extends EventEmitter {
                 if (videoTrack) {
                   videoTrack.replaceTrack(hasVideo);
                 } else {
-                  //edge case
-                  let oldstreamHasAudio = this._currentStream.getTracks().find(track => track.kind === "audio");
+                  this._mediaConnectionMap[key].peerConnection.addTrack(hasVideo); //edge case
+                  // let oldstreamHasAudio = this._currentStream.getTracks().find(track => track.kind === "audio")
+                  // if (oldstreamHasAudio && usePreviousStream)
+                  //     stream.addTrack(oldstreamHasAudio)
+                  // this._currentStream = stream
 
-                  if (oldstreamHasAudio && usePreviousStream) stream.addTrack(oldstreamHasAudio);
-                  this._currentStream = stream;
-                  console.log("{" + this.options.log_id + "} ", "updating stream with new edge case");
+
+                  console.log("{" + this.options.log_id + "} ", "updating stream with new edge case", stream);
                 }
               }
             });
