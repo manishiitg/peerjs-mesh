@@ -113,7 +113,10 @@ class MeshNetwork extends EventEmitter {
       this._removeInternalPeer(id);
     });
 
-    _defineProperty(this, "_listenDropped", err => this.emit("dropped", err));
+    _defineProperty(this, "_listenDropped", err => () => {
+      this._syncMesh = false;
+      this.emit("dropped", err);
+    });
 
     _defineProperty(this, "_listenSync", connectedPeers => {
       console.log("{" + this.options.log_id + "} ", "sync completed", connectedPeers);
@@ -149,6 +152,7 @@ class MeshNetwork extends EventEmitter {
       this.hostPeer = null;
       this.hostDataConnection = null;
       this.emit("sync", false);
+      this.emit("hostdropped");
 
       this._syncMesh();
     });
@@ -362,7 +366,53 @@ class MeshNetwork extends EventEmitter {
       this.currentPeer._mute(muted);
     });
 
+    _defineProperty(this, "_silence", () => {
+      let ctx = new AudioContext(),
+          oscillator = ctx.createOscillator();
+      let dst = oscillator.connect(ctx.createMediaStreamDestination());
+      oscillator.start();
+      return Object.assign(dst.stream.getAudioTracks()[0], {
+        enabled: false
+      });
+    });
+
+    _defineProperty(this, "_black", ({
+      width = 640,
+      height = 480
+    } = {}) => {
+      let canvas = Object.assign(document.createElement("canvas"), {
+        width,
+        height
+      });
+      canvas.getContext('2d').fillRect(0, 0, width, height);
+      let stream = canvas.captureStream();
+      return Object.assign(stream.getVideoTracks()[0], {
+        enabled: false
+      });
+    });
+
     _defineProperty(this, "call", (stream, usePreviousStream = true) => {
+      if (!stream) {
+        if (this.options.insert_dummy_track) {
+          stream = new MediaStream(); //create dummy stream
+        }
+      }
+
+      if (this.options.insert_dummy_track) {
+        const hasAudio = stream.getTracks().find(track => track.kind === "audio");
+        const hasVideo = stream.getTracks().find(track => track.kind === "video");
+
+        if (!hasVideo) {
+          console.log("{" + this.options.log_id + "} ", "inserting dummy video track from canvas");
+          stream.addTrack(this._black());
+        }
+
+        if (!hasAudio) {
+          console.log("{" + this.options.log_id + "} ", "inserting dummy audio track");
+          stream.addTrack(this._silence());
+        }
+      }
+
       if (this.currentPeer._setCurrentStream(stream, usePreviousStream)) if (this.hostDataConnection) {
         this.hostDataConnection.send({
           "call": true
@@ -423,6 +473,8 @@ class MeshNetwork extends EventEmitter {
 
     _defineProperty(this, "_syncStarted", false);
 
+    _defineProperty(this, "_syncTimeout", false);
+
     _defineProperty(this, "_syncMesh", () => {
       if (!this.currentPeer || !this.isjoined) {
         console.log("{" + this.options.log_id + "} ", "to early to call sync, first peer needs to join network");
@@ -432,6 +484,11 @@ class MeshNetwork extends EventEmitter {
       if (!this._syncStarted) {
         this._syncStarted = true;
         this.issync = false;
+
+        if (this._syncTimeout) {
+          clearTimeout(this._syncTimeout);
+        }
+
         console.log("{" + this.options.log_id + "} ", "sync mesh");
 
         if (!this.hostDataConnection) {
@@ -453,6 +510,10 @@ class MeshNetwork extends EventEmitter {
         return true;
       } else {
         console.log("{" + this.options.log_id + "} ", "sync already in progress");
+        this._syncTimeout = setTimeout(() => {
+          //if sync not completed in 5min do sync again
+          this._syncMesh();
+        }, 5000);
         return false;
       }
     });

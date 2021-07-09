@@ -504,14 +504,12 @@ class MeshPeer extends EventEmitter {
                 if (videoTrack) {
                   videoTrack.replaceTrack(hasVideo);
                 } else {
-                  this._mediaConnectionMap[key].peerConnection.addTrack(hasVideo); //edge case
-                  // let oldstreamHasAudio = this._currentStream.getTracks().find(track => track.kind === "audio")
-                  // if (oldstreamHasAudio && usePreviousStream)
-                  //     stream.addTrack(oldstreamHasAudio)
-                  // this._currentStream = stream
-
-
-                  console.log("{" + this.options.log_id + "} ", "updating stream with new edge case", stream);
+                  // this case happens when previously call was connected but it didn't have video in it like camera was not accessable but not trying to screen share
+                  if (!this.options.insert_dummy_track) {
+                    console.error("{" + this.options.log_id + "} ", "enable insert_dummy_track to get this working!");
+                  } else {
+                    console.log("{" + this.options.log_id + "} ", "this should not happeny anymore!");
+                  }
                 }
               }
             });
@@ -530,11 +528,11 @@ class MeshPeer extends EventEmitter {
                   audioTrack.replaceTrack(hasAudio);
                 } else {
                   //edge case
-                  let oldstreamHasVideo = this._currentStream.getTracks().find(track => track.kind === "video");
-
-                  if (oldstreamHasVideo && usePreviousStream) stream.addTrack(oldstreamHasVideo);
-                  this._currentStream = stream;
-                  console.log("{" + this.options.log_id + "} ", "updating stream with new but preserving video edge case");
+                  if (!this.options.insert_dummy_track) {
+                    console.error("{" + this.options.log_id + "} ", "enable insert_dummy_track to get this working!");
+                  } else {
+                    console.log("{" + this.options.log_id + "} ", "this should not happeny anymore!");
+                  }
                 }
               }
             });
