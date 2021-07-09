@@ -486,21 +486,24 @@ class MeshNetwork extends EventEmitter {
         this.issync = false;
 
         if (this._syncTimeout) {
+          console.log("{" + this.options.log_id + "} ", "clearing timeout");
           clearTimeout(this._syncTimeout);
         }
 
-        console.log("{" + this.options.log_id + "} ", "sync mesh");
+        console.log("{" + this.options.log_id + "} ", "sync mesh started");
 
         if (!this.hostDataConnection) {
           this._connectToHost();
 
           this.once("hostconnected", () => {
+            console.log("{" + this.options.log_id + "} ", "sync mesh host connected new data connection");
             this.hostDataConnection.send({
               "peerlist": true,
               "existingPeers": this._peerlist
             });
           });
         } else {
+          console.log("{" + this.options.log_id + "} ", "sync mesh host connected");
           this.hostDataConnection.send({
             "peerlist": true,
             "existingPeers": this._peerlist
@@ -512,6 +515,9 @@ class MeshNetwork extends EventEmitter {
         console.log("{" + this.options.log_id + "} ", "sync already in progress");
         this._syncTimeout = setTimeout(() => {
           //if sync not completed in 5min do sync again
+          this._syncStarted = false;
+          console.log("{" + this.options.log_id + "} ", "sync didn't completed in 5sec doing it again");
+
           this._syncMesh();
         }, 5000);
         return false;
