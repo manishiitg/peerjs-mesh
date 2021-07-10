@@ -138,6 +138,8 @@ class MeshNetwork extends EventEmitter {
         }
       }
 
+      this.hostDataConnection = null; //TODO add this very rcently, test properly
+
       this.emit("error", err);
     });
 
@@ -513,8 +515,13 @@ class MeshNetwork extends EventEmitter {
         return true;
       } else {
         console.log("{" + this.options.log_id + "} ", "sync already in progress");
+
+        if (this._syncTimeout) {
+          clearTimeout(this._syncTimeout);
+        }
+
         this._syncTimeout = setTimeout(() => {
-          //if sync not completed in 5min do sync again
+          //if sync not completed in 10sec do sync again
           this._syncStarted = false;
           console.log("{" + this.options.log_id + "} ", "sync didn't completed in 5sec doing it again");
 

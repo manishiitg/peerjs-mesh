@@ -433,7 +433,14 @@ class MeshPeer extends EventEmitter {
     _defineProperty(this, "connectStreamWithPeer", (other_peer_id, stream, serve = true) => {
       let mc = this._peer.call(other_peer_id, stream);
 
-      if (serve) this._serveMediaConnection(mc);
+      if (serve) {
+        if (mc) {
+          this._serveMediaConnection(mc);
+        } else {
+          console.log("{" + this.options.log_id + "} media connection not found");
+        }
+      }
+
       return mc;
     });
 
